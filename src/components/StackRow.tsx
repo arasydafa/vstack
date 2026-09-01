@@ -91,7 +91,12 @@ export const StackRow = ({ item, index, isCurrentRsp, onRemove }: StackRowProps)
       </div>
 
       <button
-        onClick={() => onRemove(index)}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          onRemove(index);
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
         className="text-zinc-500 hover:text-cyber-red transition-colors"
       >
         <X className="w-4 h-4" />
