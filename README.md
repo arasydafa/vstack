@@ -1,50 +1,59 @@
-# VStack
+# VStack - Visual ROP Chain Builder
 
-**Visual ROP Chain Builder** — An interactive educational tool for learning binary exploitation through visual ROP chain construction.
-
+> An interactive educational tool for learning binary exploitation through visual ROP chain construction.
 <p align="center">
   <img src="https://img.shields.io/badge/React-18.2-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-4.4-646CFF?logo=vite" alt="Vite">
   <img src="https://img.shields.io/badge/Tailwind_CSS-3.3-06B6D4?logo=tailwindcss" alt="Tailwind CSS">
+  <a href="https://arasydafa.github.io/vstack/"><img src="https://img.shields.io/badge/Live-Demo-brightgreen" alt="Live Demo"></a>
 </p>
 
 ## Overview
 
-VStack is a browser-based simulator that teaches Return-Oriented Programming (ROP) — a technique used in binary exploitation to bypass NX (No-Execute) protection. Build ROP chains visually, step through execution, and learn how each gadget affects CPU registers and memory.
-
-### Why VStack?
-
-Traditional ROP tutorials rely on static text and code snippets. VStack lets you **see** the CPU state change in real-time as you construct and execute chains, making abstract concepts tangible.
+VStack is a web-based simulator that teaches Return-Oriented Programming (ROP) by allowing users to visually build and execute ROP chains on a simulated CPU. Users drag-and-drop assembly gadgets onto a stack, step through execution, and learn how ROP techniques bypass NX-bit protections.
 
 ## Features
 
-- **Visual ROP Chain Builder** — Drag and drop gadgets onto a visual stack canvas
-- **Simulated CPU Engine** — Step-through execution with register tracking (RAX, RDI, RSI, RIP)
-- **Interactive Stack Memory** — Reorder, insert values, and watch RSP update
-- **Real-time Register Display** — See registers change with each instruction
-- **Educational Explanations** — Detailed error/success feedback with "What Happened", "Why It Matters", and "How to Fix"
-- **Theory Library** — Built-in knowledge base covering:
-  - Stack Memory (LIFO, RSP, PUSH/POP)
-  - ROP Fundamentals (bypassing NX)
-  - ROP Gadgets (finding and chaining)
-  - x86-64 Calling Convention (System V ABI)
-  - execve Syscall (spawning shells)
-  - NX Bit / DEP (why ROP exists)
-  - Stack Alignment (16-byte alignment, MOVAPS)
-- **Export to Pwntools** — Generate valid Python pwntools code from your chain
-- **Pre-loaded Gadgets** — 6 simulated gadgets from a typical vulnerable binary
+### Interactive Stack Builder
+- **Drag & Drop**: Drag ROP gadgets from the library to the stack canvas
+- **Reorder**: Sort stack items by dragging within the canvas
+- **Quick Insert**: Add common values (`NULL`, `/bin/sh`, syscall numbers) with one click
+- **Remove**: Delete unwanted stack items with the X button
 
-## Quick Start
+### CPU Simulator
+- **Step-by-step Execution**: Watch each instruction execute one at a time
+- **Register Tracking**: See how `POP`, `RET`, and `SYSCALL` modify registers
+- **Visual Feedback**: Color-coded status (idle, running, crashed, shell spawned)
+- **Error Explanations**: Educational feedback when things go wrong
+
+### Educational Content
+- **Theory Sidebar**: 7 concepts covering fundamentals, ROP techniques, and security
+- **Concept Tooltips**: Hover over terms like "Stack Pointer (RSP)" to learn more
+- **Status Explanations**: Detailed breakdowns of errors and successes
+- **Pwntools Export**: Export your ROP chain as working Python code
+
+## Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| React 18 | UI framework |
+| TypeScript 5 | Type safety |
+| Vite 4 | Build tool |
+| Tailwind CSS 3 | Styling |
+| @dnd-kit | Drag-and-drop |
+| lucide-react | Icons |
+
+## Getting Started
 
 ### Prerequisites
-
-- Node.js 18+ and npm
+- Node.js 18+ 
+- npm or yarn
 
 ### Installation
 
 ```bash
-git clone https://github.com/ArasyDafa/vstack.git
+git clone https://github.com/arasydafa/vstack.git
 cd vstack
 npm install
 ```
@@ -57,106 +66,82 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### Production Build
+### Build
 
 ```bash
 npm run build
 ```
 
-The output will be in the `dist/` directory.
-
-### Preview Production Build
+### Deploy to GitHub Pages
 
 ```bash
-npm run preview
+npm run build
+# Copy dist/ contents to your gh-pages branch
 ```
 
-## Usage
-
-### Building a ROP Chain
-
-1. **Drag gadgets** from the Gadget Library (left panel) onto the Stack Memory (center)
-2. **Insert values** using the quick-insert buttons: `/bin/sh`, `execve (59)`, `NULL`, etc.
-3. **Reorder items** by dragging within the stack to get the correct chain order
-4. **Step through execution** using the Step button in the CPU Monitor (right panel)
-5. **Watch registers update** in real-time as each instruction executes
-
-### Target Chain (execve shell)
-
-To spawn a shell, build this chain:
+## Project Structure
 
 ```
-[POP RAX; RET]  →  0x3b (execve syscall number)
-[POP RDI; RET]  →  0x7fff (/bin/sh address)
-[SYSCALL]        →  triggers execve("/bin/sh")
+vstack/
+├── src/
+│   ├── components/          # React UI components
+│   │   ├── ConceptModal.tsx      # Full-screen concept detail view
+│   │   ├── ConceptTooltip.tsx    # Hover tooltip with "Learn more"
+│   │   ├── CpuMonitor.tsx        # Register display and controls
+│   │   ├── GadgetLibrary.tsx     # Draggable gadget list
+│   │   ├── StackCanvas.tsx       # Drop target with sortable items
+│   │   ├── StackRow.tsx          # Individual stack item row
+│   │   ├── StatusExplanation.tsx # Error/success explanation panel
+│   │   └── TheorySidebar.tsx     # Slide-in theory panel
+│   ├── data/                # Static data definitions
+│   │   ├── concepts.ts           # 7 educational concepts
+│   │   ├── explanations.ts       # 9 status explanations
+│   │   └── gadgets.ts           # 6 ROP gadgets + 6 insertable values
+│   ├── engine/              # CPU simulation logic
+│   │   └── CpuEngine.ts          # Step execution, register tracking
+│   ├── hooks/               # React hooks
+│   │   └── useCpu.ts            # useReducer-based state management
+│   ├── types/               # TypeScript definitions
+│   │   └── index.ts             # All interfaces and types
+│   ├── utils/               # Utility functions
+│   │   └── exportPwntools.ts    # Pwntools Python export
+│   ├── App.tsx              # Root component with layout
+│   ├── main.tsx             # Entry point
+│   └── index.css            # Tailwind + custom styles
+├── public/
+├── package.json
+├── tailwind.config.js
+└── vite.config.ts
 ```
 
-### Export to Pwntools
+## CPU Simulation
 
-Click **Export to Pwntools** to copy a valid Python script to your clipboard. Paste it into your exploit script and run with `python exploit.py`.
+The simulator supports three x86-64 instructions:
 
-## Architecture
+| Instruction | Behavior |
+|-------------|----------|
+| `POP reg` | Pop top of stack into register (`RAX`, `RDI`, `RSI`, `RIP`) |
+| `RET` | Pop top of stack into `RIP` (control flow hijack) |
+| `SYSCALL` | Execute syscall with current register values |
 
-```
-src/
-├── main.tsx                  # React entry point
-├── App.tsx                   # Root component (DnD context, layout, state)
-├── index.css                 # Global Tailwind styles + custom animations
-├── components/
-│   ├── GadgetLibrary.tsx     # Sidebar: draggable ROP gadgets
-│   ├── StackCanvas.tsx       # Center: droppable stack visualization
-│   ├── StackRow.tsx          # Individual sortable stack entry
-│   ├── CpuMonitor.tsx        # Right panel: CPU state, registers, controls
-│   ├── RegisterDisplay.tsx   # Single register display
-│   ├── TheorySidebar.tsx     # Slide-out theory/knowledge sidebar
-│   ├── ConceptModal.tsx      # Modal for detailed concept explanation
-│   ├── ConceptTooltip.tsx    # Hover tooltip for concept references
-│   └── StatusExplanation.tsx # Expandable error/success explanation panel
-├── data/
-│   ├── gadgets.ts            # 6 ROP gadgets with addresses + descriptions
-│   ├── explanations.ts       # 9 detailed error/success explanations
-│   └── concepts.ts           # 7 educational concepts with diagrams & examples
-├── engine/
-│   └── CpuEngine.ts          # Simulated CPU execution engine
-├── hooks/
-│   └── useCpu.ts             # React hook wrapping CPU state with useReducer
-├── types/
-│   └── index.ts              # All TypeScript interfaces/types
-└── utils/
-    └── exportPwntools.ts     # Exports ROP chain to pwntools Python code
-```
+### Success Condition
 
-### Tech Stack
+Shell is spawned when:
+- `RAX = 0x3b` (execve syscall number)
+- `RDI = 0x7fff` (pointer to `"/bin/sh"`)
 
-| Technology | Purpose |
-|------------|---------|
-| React 18 | Component-based UI rendering |
-| TypeScript 5 | Type-safe JavaScript |
-| Vite 4 | Fast dev server and production bundler |
-| Tailwind CSS 3 | Utility-first CSS styling |
-| @dnd-kit | Drag-and-drop interactions |
-| Lucide React | SVG icon library |
+## Available Gadgets
 
-## Deployment
-
-### GitHub Pages (Recommended)
-
-The project includes a GitHub Actions workflow that auto-deploys on push to `main`:
-
-1. Push to your GitHub repository
-2. Go to **Settings > Pages**
-3. Set **Source** to **GitHub Actions**
-4. The site will be available at `https://<username>.github.io/vstack/`
-
-### Vercel
-
-1. Import your repository on [vercel.com](https://vercel.com)
-2. Vercel auto-detects Vite — no configuration needed
-3. Deploy
+| Address | Instructions | Description |
+|---------|--------------|-------------|
+| `0x4005d3` | `POP RDI`; `RET` | Load value into `RDI` |
+| `0x4005d9` | `POP RSI`; `RET` | Load value into `RSI` |
+| `0x4005e5` | `POP RAX`; `RET` | Load value into `RAX` |
+| `0x4005e1` | `POP RDX`; `RET` | Load value into `RDX` |
+| `0x4005e9` | `SYSCALL`; `RET` | Execute `syscall` |
+| `0x4005a0` | `NOP`; `RET` | No operation (padding) |
 
 ## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -166,12 +151,16 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Author
+## Acknowledgments
 
-**Arasy Dafa** — [GitHub](https://github.com/ArasyDafa)
+- Built as an educational tool for learning binary exploitation
+- Inspired by pwntools and ROP tutorial resources
+- Designed for CTF players and security researchers
 
 ---
 
-Built as an educational tool for binary exploitation. Learn ROP visually, understand the concepts, and apply them in real-world scenarios.
+**Author**: Arasy Dafa Sulistya Kurniawan
+
+**Live Demo**: [https://arasydafa.github.io/vstack/](https://arasydafa.github.io/vstack/)
