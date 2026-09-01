@@ -58,8 +58,10 @@ export interface Concept {
 export interface CpuState {
   /** Current values of simulated registers (rax, rdi, rsi, rip). */
   registers: Record<Register, string>;
-  /** Stack contents as an array of hex string values. */
+  /** Stack contents as an array of hex string values (used by CPU engine). */
   stack: string[];
+  /** Full stack items with metadata (used by UI for display and drag-and-drop). */
+  stackItems: StackItem[];
   /** Current stack pointer index into the stack array. */
   rsp: number;
   /** Execution status: IDLE, RUNNING, CRASHED, or SHELL_SPAWNED. */

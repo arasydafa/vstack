@@ -1,11 +1,4 @@
-/**
- * Full-screen modal displaying detailed educational concept content.
- * Shows diagrams, key points, code examples, and related concepts.
- *
- * @module components/ConceptModal
- */
-
-import { useEffect } from 'react';
+import { useEffect, useMemo, useCallback, memo } from 'react';
 import { CONCEPTS } from '../data/concepts';
 import { X, BookOpen } from 'lucide-react';
 
@@ -18,6 +11,9 @@ interface ConceptModalProps {
   /** Callback to navigate to a different concept (for related concepts). */
   onNavigate: (conceptId: string) => void;
 }
+
+/** Pre-built map for O(1) concept lookups. */
+const CONCEPTS_MAP = new Map(CONCEPTS.map(c => [c.id, c]));
 
 /**
  * Full-screen modal for displaying detailed concept content.
@@ -38,8 +34,8 @@ interface ConceptModalProps {
  * @param props - ConceptModalProps with conceptId, close and navigate callbacks.
  * @returns A full-screen modal overlay with scrollable concept content.
  */
-export const ConceptModal = ({ conceptId, onClose, onNavigate }: ConceptModalProps) => {
-  const concept = CONCEPTS.find(c => c.id === conceptId);
+export const ConceptModal = memo(({ conceptId, onClose, onNavigate }: ConceptModalProps) => {
+  const concept = useMemo(() => CONCEPTS_MAP.get(conceptId), [conceptId]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -49,24 +45,31 @@ export const ConceptModal = ({ conceptId, onClose, onNavigate }: ConceptModalPro
     return () => document.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
-  if (!concept) return null;
+  const relatedConcepts = useMemo(() => {
+    if (!concept) return [];
+    return concept.relatedConcepts
+      .map(id => CONCEPTS_MAP.get(id))
+      .filter(Boolean);
+  }, [concept]);
 
-  const relatedConcepts = concept.relatedConcepts
-    .map(id => CONCEPTS.find(c => c.id === id))
-    .filter(Boolean);
+  const handleBackdropClick = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  if (!concept) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Backdrop */}
+      {/* Backdrop - solid color instead of blur for performance */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
+        className="absolute inset-0 bg-black/80"
+        onClick={handleBackdropClick}
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-3xl max-h-[90vh] mx-4 bg-zinc-900 rounded-xl border border-zinc-800 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-3xl max-h-[90vh] mx-4 bg-zinc-900 rounded-xl border border-zinc-800 shadow-2xl overflow-hidden will-change-transform">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800">
+        <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-zinc-900 border-b border-zinc-800">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-cyber-blue/10 border border-cyber-blue/30">
               <BookOpen className="w-5 h-5 text-cyber-blue" />
@@ -144,4 +147,6 @@ export const ConceptModal = ({ conceptId, onClose, onNavigate }: ConceptModalPro
       </div>
     </div>
   );
-};
+});
+
+ConceptModal.displayName = 'ConceptModal';

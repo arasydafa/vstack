@@ -1,16 +1,10 @@
-/**
- * Stack memory visualization canvas with drag-and-drop support.
- * Displays the ROP chain as a sortable list of stack items.
- *
- * @module components/StackCanvas
- */
-
+import { useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { StackItem } from '../types';
 import { VALUES } from '../data/gadgets';
 import { StackRow } from './StackRow';
-import { Layers, Plus } from 'lucide-react';
+import { Layers, Plus, Trash2 } from 'lucide-react';
 
 /** Props for the StackCanvas component. */
 interface StackCanvasProps {
@@ -22,6 +16,8 @@ interface StackCanvasProps {
   onRemoveItem: (index: number) => void;
   /** Callback to insert a value with a label at the end of the stack. */
   onInsertValue: (value: string, label: string) => void;
+  /** Callback to clear all items from the stack. */
+  onClearAll: () => void;
 }
 
 /**
@@ -36,12 +32,12 @@ interface StackCanvasProps {
  * @param props - StackCanvasProps with items, RSP, and callbacks.
  * @returns A panel with value insertion buttons and sortable stack list.
  */
-export const StackCanvas = ({ items, currentRsp, onRemoveItem, onInsertValue }: StackCanvasProps) => {
+export const StackCanvas = ({ items, currentRsp, onRemoveItem, onInsertValue, onClearAll }: StackCanvasProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'stack-canvas',
   });
 
-  const itemIds = items.map(item => item.id);
+  const itemIds = useMemo(() => items.map(item => item.id), [items]);
 
   return (
     <div className="h-full flex flex-col">
@@ -54,6 +50,15 @@ export const StackCanvas = ({ items, currentRsp, onRemoveItem, onInsertValue }: 
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-zinc-500">RSP:</span>
             <span className="text-xs font-mono text-cyber-green">[{currentRsp}]</span>
+            {items.length > 0 && (
+              <button
+                onClick={onClearAll}
+                className="ml-2 px-2 py-1 text-xs font-mono bg-zinc-800 border border-zinc-700 rounded hover:border-cyber-red hover:text-cyber-red transition-colors flex items-center gap-1"
+              >
+                <Trash2 className="w-3 h-3" />
+                Clear
+              </button>
+            )}
           </div>
         </div>
         <div className="mt-2 flex flex-wrap gap-1">

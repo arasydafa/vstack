@@ -1,10 +1,4 @@
-/**
- * Individual sortable row in the StackCanvas.
- * Displays a single stack item with its address, type icon, and remove button.
- *
- * @module components/StackRow
- */
-
+import { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { StackItem } from '../types';
@@ -34,7 +28,7 @@ interface StackRowProps {
  * @param props - StackRowProps with item data and callbacks.
  * @returns A sortable row element with interactive controls.
  */
-export const StackRow = ({ item, index, isCurrentRsp, onRemove }: StackRowProps) => {
+export const StackRow = memo(({ item, index, isCurrentRsp, onRemove }: StackRowProps) => {
   const {
     attributes,
     listeners,
@@ -55,7 +49,7 @@ export const StackRow = ({ item, index, isCurrentRsp, onRemove }: StackRowProps)
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 p-2 rounded-lg border transition-all duration-200 ${
+      className={`flex items-center gap-2 p-2 rounded-lg border will-change-transform ${
         isDragging ? 'opacity-50 z-50' : ''
       } ${
         isCurrentRsp
@@ -103,4 +97,6 @@ export const StackRow = ({ item, index, isCurrentRsp, onRemove }: StackRowProps)
       </button>
     </div>
   );
-};
+});
+
+StackRow.displayName = 'StackRow';

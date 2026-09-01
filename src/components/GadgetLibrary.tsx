@@ -1,10 +1,4 @@
-/**
- * Draggable gadget card component for the Gadget Library sidebar.
- * Uses @dnd-kit for drag-and-drop functionality.
- *
- * @module components/GadgetLibrary
- */
-
+import { memo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { Gadget } from '../types';
 import { GADGETS } from '../data/gadgets';
@@ -23,7 +17,7 @@ interface DraggableGadgetProps {
  * @param props - DraggableGadgetProps containing the gadget data.
  * @returns A draggable card element with visual feedback during drag.
  */
-const DraggableGadget = ({ gadget }: DraggableGadgetProps) => {
+const DraggableGadget = memo(({ gadget }: DraggableGadgetProps) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `gadget-${gadget.id}`,
     data: {
@@ -37,7 +31,7 @@ const DraggableGadget = ({ gadget }: DraggableGadgetProps) => {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`p-3 rounded-lg border border-zinc-700 bg-zinc-800/50 cursor-grab active:cursor-grabbing transition-all duration-200 hover:border-cyber-blue hover:bg-zinc-800 ${
+      className={`p-3 rounded-lg border border-zinc-700 bg-zinc-800/50 cursor-grab active:cursor-grabbing transition-colors duration-150 hover:border-cyber-blue hover:bg-zinc-800 will-change-transform ${
         isDragging ? 'opacity-50 z-50 shadow-lg shadow-cyber-blue/30' : ''
       }`}
     >
@@ -56,7 +50,9 @@ const DraggableGadget = ({ gadget }: DraggableGadgetProps) => {
       </div>
     </div>
   );
-};
+});
+
+DraggableGadget.displayName = 'DraggableGadget';
 
 /**
  * Sidebar panel displaying all available ROP gadgets.
@@ -67,7 +63,7 @@ const DraggableGadget = ({ gadget }: DraggableGadgetProps) => {
  *
  * @returns A panel with header and scrollable gadget list.
  */
-export const GadgetLibrary = () => {
+export const GadgetLibrary = memo(() => {
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b border-zinc-700">
@@ -84,4 +80,6 @@ export const GadgetLibrary = () => {
       </div>
     </div>
   );
-};
+});
+
+GadgetLibrary.displayName = 'GadgetLibrary';

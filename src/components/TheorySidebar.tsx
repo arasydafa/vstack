@@ -1,11 +1,4 @@
-/**
- * Slide-out sidebar listing all educational concepts by category.
- * Provides navigation to ConceptModal for detailed content.
- *
- * @module components/TheorySidebar
- */
-
-import { useEffect } from 'react';
+import { useEffect, useMemo, useCallback, memo } from 'react';
 import { CONCEPTS } from '../data/concepts';
 import { X, BookOpen, Code, Lock } from 'lucide-react';
 
@@ -19,21 +12,20 @@ interface TheorySidebarProps {
   onConceptSelect: (conceptId: string) => void;
 }
 
-/**
- * Visual configuration for each concept category.
- * Determines icon, text color, and label.
- */
+/** Visual configuration for each concept category. */
 const categoryConfig = {
   fundamentals: { icon: BookOpen, color: 'text-cyber-blue', label: 'Fundamentals' },
   'rop-technique': { icon: Code, color: 'text-cyber-green', label: 'ROP Technique' },
   security: { icon: Lock, color: 'text-cyber-purple', label: 'Security' },
 };
 
+const categories = ['fundamentals', 'rop-technique', 'security'] as const;
+
 /**
  * Slide-out sidebar from the right edge of the screen.
  *
  * Features:
- * - Backdrop overlay with blur effect
+ * - Backdrop overlay with solid color (no blur for performance)
  * - Three categories: Fundamentals, ROP Technique, Security
  * - Each concept shows title and summary
  * - Clicking a concept closes sidebar and opens ConceptModal
@@ -42,7 +34,7 @@ const categoryConfig = {
  * @param props - TheorySidebarProps with open state and callbacks.
  * @returns A slide-out sidebar with backdrop overlay.
  */
-export const TheorySidebar = ({ isOpen, onClose, onConceptSelect }: TheorySidebarProps) => {
+export const TheorySidebar = memo(({ isOpen, onClose, onConceptSelect }: TheorySidebarProps) => {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -54,13 +46,24 @@ export const TheorySidebar = ({ isOpen, onClose, onConceptSelect }: TheorySideba
     };
   }, [isOpen]);
 
-  const categories = ['fundamentals', 'rop-technique', 'security'] as const;
+  const conceptsByCategory = useMemo(() => {
+    return categories.map(category => ({
+      category,
+      config: categoryConfig[category],
+      concepts: CONCEPTS.filter(c => c.category === category),
+    }));
+  }, []);
+
+  const handleConceptClick = useCallback((conceptId: string) => {
+    onConceptSelect(conceptId);
+    onClose();
+  }, [onConceptSelect, onClose]);
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - solid color instead of blur for performance */}
       <div
-        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/60 z-[90] transition-opacity duration-300 ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
@@ -68,12 +71,12 @@ export const TheorySidebar = ({ isOpen, onClose, onConceptSelect }: TheorySideba
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md bg-zinc-900 border-l border-zinc-800 z-[95] transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-full max-w-md bg-zinc-900 border-l border-zinc-800 z-[95] transform transition-transform duration-300 ease-in-out will-change-transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800">
+        <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-zinc-900 border-b border-zinc-800">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-cyber-green/10 border border-cyber-green/30">
               <BookOpen className="w-5 h-5 text-cyber-green" />
@@ -93,10 +96,8 @@ export const TheorySidebar = ({ isOpen, onClose, onConceptSelect }: TheorySideba
 
         {/* Content */}
         <div className="p-4 overflow-y-auto h-[calc(100vh-72px)] space-y-6">
-          {categories.map((category) => {
-            const config = categoryConfig[category];
+          {conceptsByCategory.map(({ category, config, concepts }) => {
             const Icon = config.icon;
-            const concepts = CONCEPTS.filter(c => c.category === category);
 
             return (
               <div key={category}>
@@ -108,11 +109,8 @@ export const TheorySidebar = ({ isOpen, onClose, onConceptSelect }: TheorySideba
                   {concepts.map((concept) => (
                     <button
                       key={concept.id}
-                      onClick={() => {
-                        onConceptSelect(concept.id);
-                        onClose();
-                      }}
-                      className="w-full text-left p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-cyber-blue hover:bg-zinc-800 transition-all group"
+                      onClick={() => handleConceptClick(concept.id)}
+                      className="w-full text-left p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-cyber-blue hover:bg-zinc-800 transition-colors group"
                     >
                       <div className="font-medium text-zinc-200 group-hover:text-cyber-blue transition-colors">
                         {concept.title}
@@ -130,4 +128,6 @@ export const TheorySidebar = ({ isOpen, onClose, onConceptSelect }: TheorySideba
       </div>
     </>
   );
-};
+});
+
+TheorySidebar.displayName = 'TheorySidebar';

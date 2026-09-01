@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useCallback, memo } from 'react';
 import { CONCEPTS } from '../data/concepts';
 import { BookOpen } from 'lucide-react';
 
@@ -8,25 +8,33 @@ interface ConceptTooltipProps {
   onConceptClick: (conceptId: string) => void;
 }
 
-export const ConceptTooltip = ({ conceptId, children, onConceptClick }: ConceptTooltipProps) => {
+/** Pre-built map for O(1) concept lookups. */
+const CONCEPTS_MAP = new Map(CONCEPTS.map(c => [c.id, c]));
+
+export const ConceptTooltip = memo(({ conceptId, children, onConceptClick }: ConceptTooltipProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const concept = CONCEPTS.find(c => c.id === conceptId);
+  const concept = useMemo(() => CONCEPTS_MAP.get(conceptId), [conceptId]);
 
-  if (!concept) return <>{children}</>;
-
-  const handleMouseEnter = () => {
+  const handleMouseEnter = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     setIsHovered(true);
-  };
+  }, []);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     timeoutRef.current = setTimeout(() => {
       setIsHovered(false);
     }, 100);
-  };
+  }, []);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onConceptClick(conceptId);
+  }, [onConceptClick, conceptId]);
+
+  if (!concept) return <>{children}</>;
 
   return (
     <div 
@@ -48,10 +56,7 @@ export const ConceptTooltip = ({ conceptId, children, onConceptClick }: ConceptT
           </div>
           <p className="text-xs text-zinc-400 mb-2">{concept.summary}</p>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onConceptClick(conceptId);
-            }}
+            onClick={handleClick}
             className="text-xs text-cyber-blue hover:underline"
           >
             Click to learn more
@@ -64,4 +69,6 @@ export const ConceptTooltip = ({ conceptId, children, onConceptClick }: ConceptT
       )}
     </div>
   );
-};
+});
+
+ConceptTooltip.displayName = 'ConceptTooltip';

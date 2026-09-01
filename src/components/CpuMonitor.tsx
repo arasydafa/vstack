@@ -1,17 +1,18 @@
-/**
- * CPU state monitor panel showing registers, status, and control buttons.
- * Provides step-through execution and pwntools export functionality.
- *
- * @module components/CpuMonitor
- */
-
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { CpuState, StackItem } from '../types';
 import { RegisterDisplay } from './RegisterDisplay';
 import { StatusExplanation } from './StatusExplanation';
 import { ConceptTooltip } from './ConceptTooltip';
 import { exportToPwntools, copyToClipboard } from '../utils/exportPwntools';
 import { Activity, Play, RotateCcw, Download, Check } from 'lucide-react';
+
+/** Status color mappings - defined outside component to avoid recreation. */
+const STATUS_COLORS: Record<CpuState['status'], string> = {
+  IDLE: 'text-zinc-400 bg-zinc-800',
+  RUNNING: 'text-cyber-blue bg-cyber-blue/10',
+  CRASHED: 'text-cyber-red bg-cyber-red/10',
+  SHELL_SPAWNED: 'text-cyber-green bg-cyber-green/10',
+};
 
 /** Props for the CpuMonitor component. */
 interface CpuMonitorProps {
@@ -41,24 +42,17 @@ interface CpuMonitorProps {
  * @param props - CpuMonitorProps with state, items, and callbacks.
  * @returns A scrollable panel with register displays and control buttons.
  */
-export const CpuMonitor = ({ state, items, onStep, onReset, onConceptClick }: CpuMonitorProps) => {
+export const CpuMonitor = memo(({ state, items, onStep, onReset, onConceptClick }: CpuMonitorProps) => {
   const [copied, setCopied] = useState(false);
 
-  const handleExport = async () => {
+  const handleExport = useCallback(async () => {
     const code = exportToPwntools(items);
     const success = await copyToClipboard(code);
     if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  };
-
-  const statusColors = {
-    IDLE: 'text-zinc-400 bg-zinc-800',
-    RUNNING: 'text-cyber-blue bg-cyber-blue/10',
-    CRASHED: 'text-cyber-red bg-cyber-red/10',
-    SHELL_SPAWNED: 'text-cyber-green bg-cyber-green/10',
-  };
+  }, [items]);
 
   return (
     <div className="h-full flex flex-col">
@@ -92,7 +86,7 @@ export const CpuMonitor = ({ state, items, onStep, onReset, onConceptClick }: Cp
 
         <div className="p-3 rounded-lg border border-zinc-700 bg-zinc-800/50">
           <div className="text-xs text-zinc-500 mb-1">Status</div>
-          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${statusColors[state.status]}`}>
+          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[state.status]}`}>
             <span className={`w-2 h-2 rounded-full ${
               state.status === 'RUNNING' ? 'bg-cyber-blue animate-pulse' :
               state.status === 'CRASHED' ? 'bg-cyber-red' :
@@ -162,4 +156,6 @@ export const CpuMonitor = ({ state, items, onStep, onReset, onConceptClick }: Cp
       </div>
     </div>
   );
-};
+});
+
+CpuMonitor.displayName = 'CpuMonitor';

@@ -1,10 +1,4 @@
-/**
- * Single register display component showing name and hex value.
- * Highlights when the register is actively being used (e.g., RIP during execution).
- *
- * @module components/RegisterDisplay
- */
-
+import { memo } from 'react';
 import { Register } from '../types';
 import { Cpu } from 'lucide-react';
 
@@ -28,10 +22,10 @@ interface RegisterDisplayProps {
  * @param props - RegisterDisplayProps with register name and value.
  * @returns A styled register display element.
  */
-export const RegisterDisplay = ({ name, value, isActive }: RegisterDisplayProps) => {
+export const RegisterDisplay = memo(({ name, value, isActive }: RegisterDisplayProps) => {
   return (
     <div
-      className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 ${
+      className={`flex items-center justify-between p-3 rounded-lg border transition-colors duration-300 ${
         isActive
           ? 'border-cyber-green bg-cyber-green/10 shadow-lg shadow-cyber-green/20'
           : 'border-zinc-700 bg-zinc-800/50'
@@ -50,4 +44,6 @@ export const RegisterDisplay = ({ name, value, isActive }: RegisterDisplayProps)
       </span>
     </div>
   );
-};
+});
+
+RegisterDisplay.displayName = 'RegisterDisplay';

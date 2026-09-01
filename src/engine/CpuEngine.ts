@@ -5,7 +5,7 @@
  * @module engine/CpuEngine
  */
 
-import { CpuState, Register } from '../types';
+import { CpuState, Register, StackItem } from '../types';
 import { EXPLANATIONS } from '../data/explanations';
 
 /**
@@ -21,6 +21,7 @@ const createInitialState = (): CpuState => ({
     rip: '0x0',
   },
   stack: [],
+  stackItems: [],
   rsp: 0,
   status: 'IDLE',
   instructionPointer: 0,
@@ -166,6 +167,7 @@ export const executeStep = (state: CpuState, gadgetMap: Map<string, { instructio
  * Creates the initial CPU state with a pre-loaded stack.
  *
  * @param stack - Array of hex string values to load onto the stack.
+ * @param stackItems - Optional array of StackItem objects for UI display.
  * @returns A CpuState with the stack populated and all registers zeroed.
  *
  * @example
@@ -174,9 +176,10 @@ export const executeStep = (state: CpuState, gadgetMap: Map<string, { instructio
  * // state.stack === ['0x4005d3', '0x7fff', '0x4005d9']
  * ```
  */
-export const getInitialCpuState = (stack: string[]): CpuState => ({
+export const getInitialCpuState = (stack: string[], stackItems: StackItem[] = []): CpuState => ({
   ...createInitialState(),
   stack,
+  stackItems,
 });
 
 export { createInitialState };

@@ -12,7 +12,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, pointerWithin, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { StackItem, Gadget } from './types';
 import { GadgetLibrary } from './components/GadgetLibrary';
@@ -37,19 +37,26 @@ const generateId = () => `item-${nextId++}`;
  * - TheorySidebar (slide-out) and ConceptModal (full-screen) overlays
  *
  * State management:
- * - `useCpu()` hook for CPU simulation state
- * - `items` state for stack items (StackItem[])
+ * - `useCpu()` hook as single source of truth for CPU and stack state
  * - `activeItem` for drag overlay display
  * - `theoryOpen` and `selectedConcept` for theory navigation
  */
 function App() {
-  const { state, step, reset } = useCpu();
-  const [items, setItems] = useState<StackItem[]>([]);
+  const { state, stackItems, step, reset, setStackItems, insertItem, removeItem, clearStack } = useCpu();
   const [activeItem, setActiveItem] = useState<StackItem | Gadget | null>(null);
-  
+
   // Theory state
   const [theoryOpen, setTheoryOpen] = useState(false);
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
+
+  // Configure sensors for better drag detection
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
   /**
    * Handles concept selection from TheorySidebar or ConceptTooltip.
@@ -97,19 +104,22 @@ function App() {
         gadgetId: gadget.id,
         label: gadget.instructions.join('; '),
       };
-      const newItems = [...items, newItem];
-      setItems(newItems);
+      setStackItems(prev => [...prev, newItem]);
       return;
     }
 
-    const activeIndex = items.findIndex(item => item.id === active.id);
-    const overIndex = items.findIndex(item => item.id === overId);
+    // For reordering, we need the current items from the hook
+    // Use functional updater to get current state
+    setStackItems(prev => {
+      const activeIndex = prev.findIndex(item => item.id === active.id);
+      const overIndex = prev.findIndex(item => item.id === overId);
 
-    if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
-      const newItems = arrayMove(items, activeIndex, overIndex);
-      setItems(newItems);
-    }
-  }, [items]);
+      if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
+        return arrayMove(prev, activeIndex, overIndex);
+      }
+      return prev;
+    });
+  }, [setStackItems]);
 
   /**
    * Inserts a data value at the end of the stack.
@@ -122,18 +132,59 @@ function App() {
       value,
       label,
     };
-    const newItems = [...items, newItem];
-    setItems(newItems);
-  }, [items]);
+    insertItem(newItem, stackItems.length);
+  }, [insertItem, stackItems.length]);
 
   /**
    * Removes a stack item by index.
    * Used by the X button on each StackRow.
    */
   const handleRemoveItem = useCallback((index: number) => {
-    const newItems = items.filter((_, i) => i !== index);
-    setItems(newItems);
-  }, [items]);
+    removeItem(index);
+  }, [removeItem]);
+
+  /**
+   * Clears all items from the stack.
+   */
+  const handleClearAll = useCallback(() => {
+    clearStack();
+  }, [clearStack]);
+
+  /**
+   * Handles stepping through CPU execution.
+   * Since useCpu is now the single source of truth, no sync needed.
+   */
+  const handleStep = useCallback(() => {
+    step();
+  }, [step]);
+
+  /**
+   * Handles resetting CPU state.
+   */
+  const handleReset = useCallback(() => {
+    reset();
+  }, [reset]);
+
+  /**
+   * Closes the theory sidebar.
+   */
+  const handleCloseTheory = useCallback(() => {
+    setTheoryOpen(false);
+  }, []);
+
+  /**
+   * Closes the concept modal.
+   */
+  const handleCloseConcept = useCallback(() => {
+    setSelectedConcept(null);
+  }, []);
+
+  /**
+   * Opens the theory sidebar.
+   */
+  const handleOpenTheory = useCallback(() => {
+    setTheoryOpen(true);
+  }, []);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -151,7 +202,7 @@ function App() {
           <div className="flex items-center gap-4">
             {/* Theory Button */}
             <button
-              onClick={() => setTheoryOpen(true)}
+              onClick={handleOpenTheory}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyber-blue/10 border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/20 transition-colors"
             >
               <BookOpen className="w-4 h-4" />
@@ -166,7 +217,8 @@ function App() {
       </header>
 
       <DndContext
-        collisionDetection={closestCenter}
+        sensors={sensors}
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -178,27 +230,20 @@ function App() {
 
             <div className="lg:col-span-5 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
               <StackCanvas
-                items={items}
+                items={stackItems}
                 currentRsp={state.rsp}
                 onRemoveItem={handleRemoveItem}
                 onInsertValue={handleInsertValue}
+                onClearAll={handleClearAll}
               />
             </div>
 
             <div className="lg:col-span-4 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
               <CpuMonitor
                 state={state}
-                items={items}
-                onStep={() => {
-                  const stackValues = items.map(item => item.value);
-                  if (JSON.stringify(state.stack) !== JSON.stringify(stackValues)) {
-                    reset();
-                  }
-                  step();
-                }}
-                onReset={() => {
-                  reset();
-                }}
+                items={stackItems}
+                onStep={handleStep}
+                onReset={handleReset}
                 onConceptClick={handleConceptClick}
               />
             </div>
@@ -222,7 +267,7 @@ function App() {
       {/* Theory Sidebar */}
       <TheorySidebar
         isOpen={theoryOpen}
-        onClose={() => setTheoryOpen(false)}
+        onClose={handleCloseTheory}
         onConceptSelect={handleConceptClick}
       />
 
@@ -230,7 +275,7 @@ function App() {
       {selectedConcept && (
         <ConceptModal
           conceptId={selectedConcept}
-          onClose={() => setSelectedConcept(null)}
+          onClose={handleCloseConcept}
           onNavigate={handleConceptClick}
         />
       )}
