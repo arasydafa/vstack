@@ -24,20 +24,20 @@ export const GADGETS: Gadget[] = [
   },
   {
     id: 'gadget-pop-rsi-ret',
-    address: '0x4005d5',
+    address: '0x4005d9',
     instructions: ['POP RSI', 'RET'],
     description: 'Pop value into RSI register',
   },
   {
     id: 'gadget-pop-rax-ret',
-    address: '0x4005d7',
+    address: '0x4005e5',
     instructions: ['POP RAX', 'RET'],
     description: 'Pop value into RAX register',
   },
   {
     id: 'gadget-syscall',
-    address: '0x4005d9',
-    instructions: ['SYSCALL'],
+    address: '0x4005e9',
+    instructions: ['SYSCALL', 'RET'],
     description: 'Execute system call',
   },
   {

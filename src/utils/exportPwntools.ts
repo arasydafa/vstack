@@ -29,11 +29,11 @@ const getGadgetById = (id: string) => GADGETS.find(g => g.id === id);
  * @example
  * ```typescript
  * const items: StackItem[] = [
- *   { id: '1', type: 'gadget', value: '0x4005d7', gadgetId: 'gadget-pop-rax-ret', label: 'POP RAX; RET' },
+ *   { id: '1', type: 'gadget', value: '0x4005e5', gadgetId: 'gadget-pop-rax-ret', label: 'POP RAX; RET' },
  *   { id: '2', type: 'value', value: '0x3b', label: 'execve (59)' },
  *   { id: '3', type: 'gadget', value: '0x4005d3', gadgetId: 'gadget-pop-rdi-ret', label: 'POP RDI; RET' },
  *   { id: '4', type: 'value', value: '0x7fff', label: '/bin/sh' },
- *   { id: '5', type: 'gadget', value: '0x4005d9', gadgetId: 'gadget-syscall', label: 'SYSCALL' },
+ *   { id: '5', type: 'gadget', value: '0x4005e9', gadgetId: 'gadget-syscall', label: 'SYSCALL; RET' },
  * ];
  * const code = exportToPwntools(items);
  * // Returns Python script with rop.raw() calls for each item
@@ -67,7 +67,7 @@ export const exportToPwntools = (stack: StackItem[]): string => {
   lines.push('');
   lines.push('# Execute the chain');
   lines.push('p = process("./binary")');
-  lines.push('rop.call(p)');
+  lines.push('p.sendline(rop.chain())');
   lines.push('p.interactive()');
 
   return lines.join('\n');
