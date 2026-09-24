@@ -4,7 +4,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { StackItem } from '../types';
 import { VALUES } from '../data/gadgets';
 import { StackRow } from './StackRow';
-import { Layers, Plus, Trash2 } from 'lucide-react';
+import { Layers, Trash2 } from 'lucide-react';
 import { Button, EmptyState } from '@omega-os/ui';
 
 /** Props for the StackCanvas component. */
@@ -64,18 +64,17 @@ export const StackCanvas = ({ items, currentRsp, onRemoveItem, onInsertValue, on
             )}
           </div>
         </div>
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap gap-x-1 gap-y-0.5">
           {VALUES.map((v) => (
-            <Button
+            <button
               key={v.value}
-              variant="ghost"
-              size="sm"
-              icon={<Plus size={14} aria-hidden />}
+              type="button"
               onClick={() => onInsertValue(v.value, v.label)}
-              className="font-mono"
+              title={`Insert ${v.value}`}
+              className="rounded-ot-sm px-1.5 py-0.5 font-mono text-xs text-ot-muted transition-colors hover:text-navy-text hover:underline"
             >
               {v.label}
-            </Button>
+            </button>
           ))}
         </div>
       </div>

@@ -132,14 +132,14 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onConceptClick 
             Step
           </Button>
 
-          <Button
+          <button
+            type="button"
             onClick={onReset}
-            variant="ghost"
-            icon={<RotateCcw size={16} aria-hidden />}
-            className="w-full"
+            className="flex w-full items-center justify-center gap-2 py-2 text-sm text-ot-muted transition-colors hover:text-ot-text"
           >
+            <RotateCcw size={16} aria-hidden />
             Reset
-          </Button>
+          </button>
 
           <Button
             onClick={handleExport}
