@@ -288,11 +288,11 @@ function App() {
 
         <DragOverlay>
           {activeItem && 'instructions' in activeItem && (
-            <div className="p-3 rounded-lg border border-cyber-blue bg-zinc-800 shadow-lg shadow-cyber-blue/30 w-64">
-              <div className="font-mono text-sm text-cyber-blue">
+            <div className="p-3 rounded-ot-md border border-navy bg-ot-surface shadow-ot-md w-64">
+              <div className="font-mono text-sm text-navy-text">
                 {(activeItem as Gadget).instructions.join('; ')}
               </div>
-              <div className="text-xs text-zinc-500 mt-1">
+              <div className="text-xs text-ot-muted mt-1">
                 {(activeItem as Gadget).address}
               </div>
             </div>
