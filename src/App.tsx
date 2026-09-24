@@ -21,7 +21,8 @@ import { CpuMonitor } from './components/CpuMonitor';
 import { TheorySidebar } from './components/TheorySidebar';
 import { ConceptModal } from './components/ConceptModal';
 import { useCpu } from './hooks/useCpu';
-import { Shield, Terminal, BookOpen } from 'lucide-react';
+import { Shield, Terminal, BookOpen, Sun, Moon } from 'lucide-react';
+import { Navbar, Button, ToasterProvider, toggleThemeReveal } from '@omega-os/ui';
 
 /** Auto-incrementing ID generator for unique stack item IDs. */
 let nextId = 1;
@@ -48,6 +49,27 @@ function App() {
   // Theory state
   const [theoryOpen, setTheoryOpen] = useState(false);
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
+
+  // Theme state — VStack ships dark by default (see index.html).
+  const [dark, setDark] = useState(
+    () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
+  );
+
+  /**
+   * Toggles light/dark with a circular reveal from the clicked button.
+   */
+  const handleToggleTheme = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const x = e.clientX || window.innerWidth - 60;
+      const y = e.clientY || 40;
+      toggleThemeReveal(x, y, () => {
+        const next = !dark;
+        setDark(next);
+        document.documentElement.classList.toggle('dark', next);
+      });
+    },
+    [dark],
+  );
 
   // Configure sensors for better drag detection
   const sensors = useSensors(
@@ -187,34 +209,48 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyber-green/10 border border-cyber-green/30">
-              <Shield className="w-6 h-6 text-cyber-green" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-zinc-100">VStack</h1>
-              <p className="text-xs text-zinc-500">Visual ROP Chain Builder</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {/* Theory Button */}
-            <button
-              onClick={handleOpenTheory}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyber-blue/10 border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/20 transition-colors"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span className="text-sm font-medium">Theory</span>
-            </button>
-            <div className="flex items-center gap-2 text-xs text-zinc-500">
-              <Terminal className="w-4 h-4" />
-              <span>Educational Tool for Binary Exploitation</span>
-            </div>
-          </div>
+    <ToasterProvider>
+    <div className="min-h-screen bg-ot-bg font-sans text-ot-text">
+      <div
+        className="sticky top-0 z-50 border-b border-ot-border backdrop-blur-sm"
+        style={{ background: 'color-mix(in srgb, var(--ot-bg) 85%, transparent)' }}
+      >
+        <div className="mx-auto max-w-7xl px-4 py-3">
+          <Navbar
+            brand={
+              <>
+                <span className="grid h-8 w-8 place-items-center rounded-ot-sm bg-navy text-white">
+                  <Shield size={18} />
+                </span>
+                <span>
+                  <span className="block text-xl font-bold leading-none">VStack</span>
+                  <span className="mt-0.5 block text-xs font-normal text-ot-muted">Visual ROP Chain Builder</span>
+                </span>
+              </>
+            }
+            links={[]}
+            actions={
+              <>
+                <Button variant="secondary" size="sm" icon={<BookOpen size={16} />} onClick={handleOpenTheory}>
+                  Theory
+                </Button>
+                <button
+                  type="button"
+                  onClick={handleToggleTheme}
+                  aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+                  className="grid h-8 w-8 place-items-center rounded-ot-sm text-ot-muted transition-all hover:bg-ot-surface hover:text-ot-text active:scale-90"
+                >
+                  {dark ? <Sun size={16} /> : <Moon size={16} />}
+                </button>
+                <span className="hidden items-center gap-2 text-xs text-ot-muted xl:flex">
+                  <Terminal size={16} />
+                  Educational Tool for Binary Exploitation
+                </span>
+              </>
+            }
+          />
         </div>
-      </header>
+      </div>
 
       <DndContext
         sensors={sensors}
@@ -280,6 +316,7 @@ function App() {
         />
       )}
     </div>
+    </ToasterProvider>
   );
 }
 
