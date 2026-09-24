@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useCallback, memo } from 'react';
 import { CONCEPTS } from '../data/concepts';
 import { X, BookOpen } from 'lucide-react';
+import { CodeBlock } from '@omega-os/ui';
 
 /** Props for the ConceptModal component. */
 interface ConceptModalProps {
@@ -97,11 +98,7 @@ export const ConceptModal = memo(({ conceptId, onClose, onNavigate }: ConceptMod
 
           {/* Diagrams */}
           {concept.diagrams.map((diagram, i) => (
-            <div key={i} className="p-4 bg-ot-bg rounded-ot-md border border-ot-border">
-              <pre className="font-mono text-sm text-success whitespace-pre overflow-x-auto">
-                {diagram}
-              </pre>
-            </div>
+            <CodeBlock key={i} language="diagram" code={diagram} />
           ))}
 
           {/* Key Points */}
@@ -121,9 +118,7 @@ export const ConceptModal = memo(({ conceptId, onClose, onNavigate }: ConceptMod
           {concept.examples.map((example, i) => (
             <div key={i}>
               <h3 className="text-lg font-semibold text-ot-text mb-3">{example.title}</h3>
-              <pre className="p-4 bg-ot-bg rounded-ot-md border border-ot-border font-mono text-sm text-info overflow-x-auto">
-                {example.code}
-              </pre>
+              <CodeBlock language="asm" code={example.code} />
             </div>
           ))}
 
