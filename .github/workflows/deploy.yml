@@ -27,7 +27,7 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Checkout omega-os (sibling file: dep, pinned for reproducible deploys — bump tag on omega-os releases)
+      - name: "Checkout omega-os sibling (pinned v1.0.1 - bump tag on omega-os releases)"
         run: git clone --depth 1 --branch v1.0.1 https://github.com/arasydafa/omega-os.git ../omega-os
 
       - name: Install dependencies
