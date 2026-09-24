@@ -68,7 +68,7 @@ export const StackCanvas = ({ items, currentRsp, onRemoveItem, onInsertValue, on
           {VALUES.map((v) => (
             <Button
               key={v.value}
-              variant="secondary"
+              variant="ghost"
               size="sm"
               icon={<Plus size={14} aria-hidden />}
               onClick={() => onInsertValue(v.value, v.label)}
