@@ -260,11 +260,11 @@ function App() {
       >
         <main className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-120px)]">
-            <div className="lg:col-span-3 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+            <div className="lg:col-span-3 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden">
               <GadgetLibrary />
             </div>
 
-            <div className="lg:col-span-5 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+            <div className="lg:col-span-5 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden">
               <StackCanvas
                 items={stackItems}
                 currentRsp={state.rsp}
@@ -274,7 +274,7 @@ function App() {
               />
             </div>
 
-            <div className="lg:col-span-4 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+            <div className="lg:col-span-4 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden">
               <CpuMonitor
                 state={state}
                 items={stackItems}
