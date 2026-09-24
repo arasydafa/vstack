@@ -31,22 +31,22 @@ const DraggableGadget = memo(({ gadget }: DraggableGadgetProps) => {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`p-3 rounded-lg border border-zinc-700 bg-zinc-800/50 cursor-grab active:cursor-grabbing transition-colors duration-150 hover:border-cyber-blue hover:bg-zinc-800 will-change-transform ${
-        isDragging ? 'opacity-50 z-50 shadow-lg shadow-cyber-blue/30' : ''
+      className={`rounded-ot-md border border-ot-border bg-ot-surface p-3 cursor-grab active:cursor-grabbing ot-transition hover:border-navy will-change-transform ${
+        isDragging ? 'opacity-50 shadow-ot-md' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <GripVertical className="w-4 h-4 text-zinc-500" />
-          <Cpu className="w-4 h-4 text-cyber-blue" />
+          <GripVertical size={16} aria-hidden className="text-ot-muted" />
+          <Cpu size={16} aria-hidden className="text-navy-text" />
         </div>
-        <span className="font-mono text-xs text-cyber-blue">{gadget.address}</span>
+        <span className="font-mono text-xs text-navy-text">{gadget.address}</span>
       </div>
       <div className="mt-2 ml-6">
-        <div className="font-mono text-sm font-medium text-zinc-200">
+        <div className="font-mono text-sm font-medium text-ot-text">
           {gadget.instructions.join('; ')}
         </div>
-        <div className="text-xs text-zinc-500 mt-1">{gadget.description}</div>
+        <div className="text-xs text-ot-muted mt-1">{gadget.description}</div>
       </div>
     </div>
   );
@@ -66,12 +66,12 @@ DraggableGadget.displayName = 'DraggableGadget';
 export const GadgetLibrary = memo(() => {
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-zinc-700">
-        <h2 className="text-lg font-semibold text-zinc-200 flex items-center gap-2">
-          <Cpu className="w-5 h-5 text-cyber-blue" />
+      <div className="p-4 border-b border-ot-border">
+        <h2 className="text-lg font-semibold text-ot-text flex items-center gap-2">
+          <Cpu size={20} aria-hidden className="text-navy-text" />
           Gadget Library
         </h2>
-        <p className="text-sm text-zinc-500 mt-1">Drag gadgets to the stack</p>
+        <p className="text-sm text-ot-muted mt-1">Drag gadgets to the stack</p>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {GADGETS.map((gadget) => (

@@ -1,8 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
+  presets: [require('@omega-os/ui/tailwind.preset.js')],
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    // OmegaOS component classes come from the linked package source.
+    "./node_modules/@omega-os/ui/dist/**/*.js",
   ],
   theme: {
     extend: {

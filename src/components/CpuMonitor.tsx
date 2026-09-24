@@ -5,13 +5,23 @@ import { StatusExplanation } from './StatusExplanation';
 import { ConceptTooltip } from './ConceptTooltip';
 import { exportToPwntools, copyToClipboard } from '../utils/exportPwntools';
 import { Activity, Play, RotateCcw, Download, Check } from 'lucide-react';
+import { Badge, Button } from '@omega-os/ui';
+import type { BadgeTone } from '@omega-os/ui';
 
-/** Status color mappings - defined outside component to avoid recreation. */
-const STATUS_COLORS: Record<CpuState['status'], string> = {
-  IDLE: 'text-zinc-400 bg-zinc-800',
-  RUNNING: 'text-cyber-blue bg-cyber-blue/10',
-  CRASHED: 'text-cyber-red bg-cyber-red/10',
-  SHELL_SPAWNED: 'text-cyber-green bg-cyber-green/10',
+/** Status tone mappings - defined outside component to avoid recreation. */
+const STATUS_TONES: Record<CpuState['status'], BadgeTone> = {
+  IDLE: 'grey',
+  RUNNING: 'info',
+  CRASHED: 'danger',
+  SHELL_SPAWNED: 'success',
+};
+
+/** Status dot colors - defined outside component to avoid recreation. */
+const STATUS_DOTS: Record<CpuState['status'], string> = {
+  IDLE: 'bg-ot-muted',
+  RUNNING: 'bg-info animate-pulse',
+  CRASHED: 'bg-danger',
+  SHELL_SPAWNED: 'bg-success animate-pulse',
 };
 
 /** Props for the CpuMonitor component. */
@@ -56,9 +66,9 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onConceptClick 
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-zinc-700">
-        <h2 className="text-lg font-semibold text-zinc-200 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-cyber-purple" />
+      <div className="p-4 border-b border-ot-border">
+        <h2 className="text-lg font-semibold text-ot-text flex items-center gap-2">
+          <Activity size={20} aria-hidden className="text-navy-text" />
           CPU Monitor
         </h2>
       </div>
@@ -75,35 +85,30 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onConceptClick 
           />
         </div>
 
-        <div className="p-3 rounded-lg border border-zinc-700 bg-zinc-800/50">
-          <div className="text-xs text-zinc-500 mb-1">
+        <div className="p-3 rounded-ot-md border border-ot-border bg-ot-surface">
+          <div className="text-xs text-ot-muted mb-1">
             <ConceptTooltip conceptId="stack-memory" onConceptClick={onConceptClick}>
-              <span className="cursor-help border-b border-dashed border-zinc-500">Stack Pointer (RSP)</span>
+              <span className="cursor-help border-b border-dashed border-ot-muted">Stack Pointer (RSP)</span>
             </ConceptTooltip>
           </div>
-          <div className="font-mono text-lg text-cyber-green">[{state.rsp}]</div>
+          <div className="font-mono text-lg text-success">[{state.rsp}]</div>
         </div>
 
-        <div className="p-3 rounded-lg border border-zinc-700 bg-zinc-800/50">
-          <div className="text-xs text-zinc-500 mb-1">Status</div>
-          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[state.status]}`}>
-            <span className={`w-2 h-2 rounded-full ${
-              state.status === 'RUNNING' ? 'bg-cyber-blue animate-pulse' :
-              state.status === 'CRASHED' ? 'bg-cyber-red' :
-              state.status === 'SHELL_SPAWNED' ? 'bg-cyber-green animate-pulse' :
-              'bg-zinc-500'
-            }`} />
+        <div className="p-3 rounded-ot-md border border-ot-border bg-ot-surface">
+          <div className="text-xs text-ot-muted mb-1">Status</div>
+          <Badge tone={STATUS_TONES[state.status]}>
+            <span className={`w-2 h-2 rounded-full ${STATUS_DOTS[state.status]}`} aria-hidden />
             {state.status}
-          </div>
+          </Badge>
         </div>
 
         {state.currentInstruction && (
-          <div className="p-3 rounded-lg border border-zinc-700 bg-zinc-800/50">
-            <div className="text-xs text-zinc-500 mb-1">Last Instruction</div>
+          <div className="p-3 rounded-ot-md border border-ot-border bg-ot-surface">
+            <div className="text-xs text-ot-muted mb-1">Last Instruction</div>
             <div className={`font-mono text-sm ${
-              state.status === 'CRASHED' ? 'text-cyber-red' :
-              state.status === 'SHELL_SPAWNED' ? 'text-cyber-green' :
-              'text-zinc-200'
+              state.status === 'CRASHED' ? 'text-danger' :
+              state.status === 'SHELL_SPAWNED' ? 'text-success' :
+              'text-ot-text'
             }`}>
               {state.currentInstruction}
             </div>
@@ -118,40 +123,33 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onConceptClick 
         )}
 
         <div className="space-y-2">
-          <button
+          <Button
             onClick={onStep}
             disabled={state.status === 'CRASHED' || state.status === 'SHELL_SPAWNED'}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-cyber-blue/20 border border-cyber-blue text-cyber-blue font-medium hover:bg-cyber-blue/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            icon={<Play size={16} aria-hidden />}
+            className="w-full"
           >
-            <Play className="w-4 h-4" />
             Step
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={onReset}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-medium hover:bg-zinc-700 transition-colors"
+            variant="solid"
+            icon={<RotateCcw size={16} aria-hidden />}
+            className="w-full"
           >
-            <RotateCcw className="w-4 h-4" />
             Reset
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={handleExport}
             disabled={items.length === 0}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-cyber-green/20 border border-cyber-green text-cyber-green font-medium hover:bg-cyber-green/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            variant="secondary"
+            icon={copied ? <Check size={16} aria-hidden /> : <Download size={16} aria-hidden />}
+            className="w-full"
           >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                Export to Pwntools
-              </>
-            )}
-          </button>
+            {copied ? 'Copied!' : 'Export to Pwntools'}
+          </Button>
         </div>
       </div>
     </div>

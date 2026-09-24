@@ -25,19 +25,19 @@ interface RegisterDisplayProps {
 export const RegisterDisplay = memo(({ name, value, isActive }: RegisterDisplayProps) => {
   return (
     <div
-      className={`flex items-center justify-between p-3 rounded-lg border transition-colors duration-300 ${
+      className={`flex items-center justify-between p-3 rounded-ot-md border ot-transition ${
         isActive
-          ? 'border-cyber-green bg-cyber-green/10 shadow-lg shadow-cyber-green/20'
-          : 'border-zinc-700 bg-zinc-800/50'
+          ? 'border-navy bg-navy-bg shadow-ot-md'
+          : 'border-ot-border bg-ot-surface'
       }`}
     >
       <div className="flex items-center gap-2">
-        <Cpu className={`w-4 h-4 ${isActive ? 'text-cyber-green' : 'text-zinc-500'}`} />
-        <span className="text-xs font-mono uppercase tracking-wider text-zinc-400">{name}</span>
+        <Cpu size={16} aria-hidden className={isActive ? 'text-success' : 'text-ot-muted'} />
+        <span className="text-xs font-mono uppercase tracking-wider text-ot-muted">{name}</span>
       </div>
       <span
         className={`font-mono text-sm font-semibold ${
-          isActive ? 'text-cyber-green' : 'text-zinc-200'
+          isActive ? 'text-success' : 'text-ot-text'
         }`}
       >
         {value}

@@ -5,6 +5,7 @@ import { StackItem } from '../types';
 import { VALUES } from '../data/gadgets';
 import { StackRow } from './StackRow';
 import { Layers, Plus, Trash2 } from 'lucide-react';
+import { Button, EmptyState } from '@omega-os/ui';
 
 /** Props for the StackCanvas component. */
 interface StackCanvasProps {
@@ -41,52 +42,55 @@ export const StackCanvas = ({ items, currentRsp, onRemoveItem, onInsertValue, on
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-zinc-700">
+      <div className="p-4 border-b border-ot-border">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-zinc-200 flex items-center gap-2">
-            <Layers className="w-5 h-5 text-cyber-green" />
+          <h2 className="text-lg font-semibold text-ot-text flex items-center gap-2">
+            <Layers size={20} aria-hidden className="text-navy-text" />
             Stack Memory
           </h2>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-zinc-500">RSP:</span>
-            <span className="text-xs font-mono text-cyber-green">[{currentRsp}]</span>
+            <span className="text-xs font-mono text-ot-muted">RSP:</span>
+            <span className="text-xs font-mono text-success">[{currentRsp}]</span>
             {items.length > 0 && (
-              <button
+              <Button
+                variant="danger"
+                size="sm"
+                icon={<Trash2 size={14} aria-hidden />}
                 onClick={onClearAll}
-                className="ml-2 px-2 py-1 text-xs font-mono bg-zinc-800 border border-zinc-700 rounded hover:border-cyber-red hover:text-cyber-red transition-colors flex items-center gap-1"
+                className="ml-2 font-mono"
               >
-                <Trash2 className="w-3 h-3" />
                 Clear
-              </button>
+              </Button>
             )}
           </div>
         </div>
         <div className="mt-2 flex flex-wrap gap-1">
           {VALUES.map((v) => (
-            <button
+            <Button
               key={v.value}
+              variant="solid"
+              size="sm"
+              icon={<Plus size={14} aria-hidden />}
               onClick={() => onInsertValue(v.value, v.label)}
-              className="px-2 py-1 text-xs font-mono bg-zinc-800 border border-zinc-700 rounded hover:border-cyber-yellow hover:text-cyber-yellow transition-colors"
+              className="font-mono"
             >
-              <Plus className="w-3 h-3 inline mr-1" />
               {v.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
       <div
         ref={setNodeRef}
-        className={`flex-1 overflow-y-auto p-4 space-y-2 transition-colors ${
-          isOver ? 'bg-cyber-green/5' : ''
+        className={`flex-1 overflow-y-auto p-4 space-y-2 ot-transition ${
+          isOver ? 'bg-navy-bg' : ''
         }`}
       >
         {items.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-zinc-500">
-            <div className="text-center">
-              <Layers className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Drop gadgets here to build your ROP chain</p>
-            </div>
-          </div>
+          <EmptyState
+            icon={<Layers size={32} aria-hidden />}
+            title="Empty stack"
+            description="Drop gadgets here to build your ROP chain"
+          />
         ) : (
           <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
             {items.map((item, index) => (

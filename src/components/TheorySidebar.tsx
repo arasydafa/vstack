@@ -14,9 +14,9 @@ interface TheorySidebarProps {
 
 /** Visual configuration for each concept category. */
 const categoryConfig = {
-  fundamentals: { icon: BookOpen, color: 'text-cyber-blue', label: 'Fundamentals' },
-  'rop-technique': { icon: Code, color: 'text-cyber-green', label: 'ROP Technique' },
-  security: { icon: Lock, color: 'text-cyber-purple', label: 'Security' },
+  fundamentals: { icon: BookOpen, color: 'text-info', label: 'Fundamentals' },
+  'rop-technique': { icon: Code, color: 'text-success', label: 'ROP Technique' },
+  security: { icon: Lock, color: 'text-navy-text', label: 'Security' },
 };
 
 const categories = ['fundamentals', 'rop-technique', 'security'] as const;
@@ -71,26 +71,27 @@ export const TheorySidebar = memo(({ isOpen, onClose, onConceptSelect }: TheoryS
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md bg-zinc-900 border-l border-zinc-800 z-[95] transform transition-transform duration-300 ease-in-out will-change-transform ${
+        className={`fixed top-0 right-0 h-full w-full max-w-md bg-ot-surface border-l border-ot-border z-[95] transform transition-transform duration-300 ease-in-out will-change-transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-zinc-900 border-b border-zinc-800">
+        <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-ot-surface border-b border-ot-border">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyber-green/10 border border-cyber-green/30">
-              <BookOpen className="w-5 h-5 text-cyber-green" />
+            <div className="p-2 rounded-ot-sm bg-navy-bg border border-transparent">
+              <BookOpen size={20} aria-hidden className="text-navy-text" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-zinc-100">Theory & Concepts</h2>
-              <p className="text-xs text-zinc-500">Learn ROP fundamentals</p>
+              <h2 className="text-lg font-bold text-ot-text">Theory & Concepts</h2>
+              <p className="text-xs text-ot-muted">Learn ROP fundamentals</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
+            aria-label="Close theory sidebar"
+            className="grid h-8 w-8 place-items-center rounded-ot-sm text-ot-muted hover:bg-ot-surface-2 hover:text-ot-text transition-colors"
           >
-            <X className="w-5 h-5 text-zinc-400" />
+            <X size={20} aria-hidden />
           </button>
         </div>
 
@@ -102,7 +103,7 @@ export const TheorySidebar = memo(({ isOpen, onClose, onConceptSelect }: TheoryS
             return (
               <div key={category}>
                 <h3 className={`text-sm font-semibold ${config.color} uppercase tracking-wider mb-3 flex items-center gap-2`}>
-                  <Icon className="w-4 h-4" />
+                  <Icon size={16} aria-hidden />
                   {config.label}
                 </h3>
                 <div className="space-y-2">
@@ -110,12 +111,12 @@ export const TheorySidebar = memo(({ isOpen, onClose, onConceptSelect }: TheoryS
                     <button
                       key={concept.id}
                       onClick={() => handleConceptClick(concept.id)}
-                      className="w-full text-left p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-cyber-blue hover:bg-zinc-800 transition-colors group"
+                      className="w-full text-left p-3 rounded-ot-md bg-ot-bg border border-ot-border hover:border-navy transition-colors group"
                     >
-                      <div className="font-medium text-zinc-200 group-hover:text-cyber-blue transition-colors">
+                      <div className="font-medium text-ot-text group-hover:text-navy-text transition-colors">
                         {concept.title}
                       </div>
-                      <div className="text-sm text-zinc-500 mt-1">
+                      <div className="text-sm text-ot-muted mt-1">
                         {concept.summary}
                       </div>
                     </button>

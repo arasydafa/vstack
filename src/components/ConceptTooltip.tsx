@@ -46,24 +46,24 @@ export const ConceptTooltip = memo(({ conceptId, children, onConceptClick }: Con
       
       {isHovered && (
         <div 
-          className="absolute z-[200] top-full left-0 mt-2 w-64 p-3 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl"
+          className="absolute z-[200] top-full left-0 mt-2 w-64 p-3 bg-ot-surface border border-ot-border rounded-ot-md shadow-ot-md"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
           <div className="flex items-center gap-2 mb-2">
-            <BookOpen className="w-4 h-4 text-cyber-blue" />
-            <span className="font-medium text-zinc-200 text-sm">{concept.title}</span>
+            <BookOpen size={16} aria-hidden className="text-navy-text" />
+            <span className="font-medium text-ot-text text-sm">{concept.title}</span>
           </div>
-          <p className="text-xs text-zinc-400 mb-2">{concept.summary}</p>
+          <p className="text-xs text-ot-muted mb-2">{concept.summary}</p>
           <button
             onClick={handleClick}
-            className="text-xs text-cyber-blue hover:underline"
+            className="text-xs text-navy-text hover:underline"
           >
             Click to learn more
           </button>
           {/* Arrow */}
           <div className="absolute bottom-full left-4 -mb-1">
-            <div className="w-2 h-2 bg-zinc-800 border-l border-t border-zinc-700 transform rotate-45" />
+            <div className="w-2 h-2 bg-ot-surface border-l border-t border-ot-border transform rotate-45" />
           </div>
         </div>
       )}

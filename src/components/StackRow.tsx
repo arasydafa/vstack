@@ -49,37 +49,38 @@ export const StackRow = memo(({ item, index, isCurrentRsp, onRemove }: StackRowP
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 p-2 rounded-lg border will-change-transform ${
+      className={`flex items-center gap-2 p-2 rounded-ot-md border will-change-transform ${
         isDragging ? 'opacity-50 z-50' : ''
       } ${
         isCurrentRsp
-          ? 'border-cyber-green bg-cyber-green/10 shadow-lg shadow-cyber-green/30'
-          : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
+          ? 'border-navy bg-navy-bg shadow-ot-md'
+          : 'border-ot-border bg-ot-surface hover:border-ot-muted'
       }`}
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-zinc-500 hover:text-zinc-300"
+        aria-label={`Drag stack item ${index}`}
+        className="cursor-grab active:cursor-grabbing text-ot-muted hover:text-ot-text"
       >
-        <GripVertical className="w-4 h-4" />
+        <GripVertical size={16} aria-hidden />
       </button>
 
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <span className="text-xs font-mono text-zinc-500 w-8">[{index}]</span>
+        <span className="text-xs font-mono text-ot-muted w-8">[{index}]</span>
         {isGadget ? (
-          <Cpu className="w-4 h-4 text-cyber-blue flex-shrink-0" />
+          <Cpu size={16} aria-hidden className="text-info flex-shrink-0" />
         ) : (
-          <Hash className="w-4 h-4 text-cyber-yellow flex-shrink-0" />
+          <Hash size={16} aria-hidden className="text-warning flex-shrink-0" />
         )}
         <div className="flex-1 min-w-0">
           <span className={`font-mono text-sm font-medium ${
-            isCurrentRsp ? 'text-cyber-green' : 'text-zinc-200'
+            isCurrentRsp ? 'text-success' : 'text-ot-text'
           }`}>
             {item.value}
           </span>
           {item.label && (
-            <span className="ml-2 text-xs text-zinc-500">({item.label})</span>
+            <span className="ml-2 text-xs text-ot-muted">({item.label})</span>
           )}
         </div>
       </div>
@@ -91,9 +92,10 @@ export const StackRow = memo(({ item, index, isCurrentRsp, onRemove }: StackRowP
           onRemove(index);
         }}
         onMouseDown={(e) => e.stopPropagation()}
-        className="text-zinc-500 hover:text-cyber-red transition-colors"
+        aria-label={`Remove stack item ${index}`}
+        className="grid h-8 w-8 place-items-center rounded-ot-sm text-ot-muted hover:text-danger transition-colors"
       >
-        <X className="w-4 h-4" />
+        <X size={16} aria-hidden />
       </button>
     </div>
   );
