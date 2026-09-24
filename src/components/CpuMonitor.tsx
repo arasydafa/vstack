@@ -134,7 +134,7 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onConceptClick 
 
           <Button
             onClick={onReset}
-            variant="secondary"
+            variant="solid"
             icon={<RotateCcw size={16} aria-hidden />}
             className="w-full"
           >
