@@ -6,7 +6,7 @@
  */
 
 import { useReducer, useCallback } from 'react';
-import { CpuState, StackItem } from '../types';
+import { CpuState, StackItem, CpuAction } from '../types';
 import { executeStep, getInitialCpuState } from '../engine/CpuEngine';
 import { getGadgetMap } from '../data/gadgets';
 
@@ -20,18 +20,8 @@ interface CpuReducerState {
   history: CpuReducerState[];
 }
 
-/** Actions for the CPU reducer. */
-type CpuReducerAction =
-  | { type: 'STEP' }
-  | { type: 'RESET' }
-  | { type: 'UNDO' }
-  | { type: 'SET_STACK_ITEMS'; payload: StackItem[] }
-  | { type: 'SET_STACK_ITEMS_UPDATER'; payload: (prev: StackItem[]) => StackItem[] }
-  | { type: 'INSERT_ITEM'; payload: { item: StackItem; index: number } }
-  | { type: 'REMOVE_ITEM'; payload: { index: number } }
-  | { type: 'REORDER_STACK'; payload: { fromIndex: number; toIndex: number } }
-  | { type: 'CLEAR_STACK' }
-  | { type: 'SET_STATUS'; payload: CpuState['status'] };
+/** Reducer actions = canonical CpuAction (see types). */
+type CpuReducerAction = CpuAction;
 
 const HISTORY_LIMIT = 100;
 
