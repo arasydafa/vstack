@@ -63,7 +63,10 @@ DraggableGadget.displayName = 'DraggableGadget';
  *
  * @returns A panel with header and scrollable gadget list.
  */
-export const GadgetLibrary = memo(() => {
+export const GadgetLibrary = memo(({ allowedGadgetIds }: { allowedGadgetIds?: string[] } = {}) => {
+  const visible = !allowedGadgetIds || allowedGadgetIds.length === 0
+    ? GADGETS
+    : GADGETS.filter((g) => allowedGadgetIds.includes(g.id));
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b border-ot-border">
@@ -72,9 +75,12 @@ export const GadgetLibrary = memo(() => {
           Gadget Library
         </h2>
         <p className="text-sm text-ot-muted mt-1">Drag gadgets to the stack</p>
+        {allowedGadgetIds && allowedGadgetIds.length > 0 && (
+          <p className="text-xs text-ot-muted mt-1">Restricted: {visible.length}/{GADGETS.length} gadgets for this level</p>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {GADGETS.map((gadget) => (
+        {visible.map((gadget) => (
           <DraggableGadget key={gadget.id} gadget={gadget} />
         ))}
       </div>

@@ -562,5 +562,171 @@ payload += p64(system_addr)  # system() - Works!
       }
     ],
     relatedConcepts: ['rop-basics', 'calling-convention']
+  },
+  {
+    id: 'buffer-overflow',
+    title: 'Buffer Overflow & Offset',
+    category: 'fundamentals',
+    summary: 'How padding reaches RIP: offset discovery with cyclic + p64',
+    content: `Most ROP chains start with a buffer overflow that overwrites the saved return address. You must know the exact offset (padding length) from buffer start to RIP.
+
+Workflow (validated against CTF practice + pwntools):
+1. Find offset with cyclic pattern: pwntools cyclic(100), send, read crash RIP, then cyclic_find / pattern_offset.
+2. Build payload = padding + chain: b"A"*offset + p64(gadget) + ...
+3. p64 is little-endian 64-bit pack. Endianness matters — x86-64 is little-endian.
+
+Example: offset 40 means 40 bytes padding (buffer + saved RBP) before first gadget address. VStack Level 0 simulates the post-overflow stack; the offset skill is what gets you there in real binaries.`,
+    diagrams: [
+      `Buffer Overflow Layout:
++-----------------+ High
+| Buffer (e.g. 32)|
+| Saved RBP (8)   | 32+8 = offset 40
+| Return Addr RIP |<-- overwrite with gadget
++-----------------+ Low (stack grows down)
+
+payload = b"A"*40 + p64(pop_rdi) + p64(binsh) + ...`
+    ],
+    keyPoints: [
+      'Offset = buffer + saved RBP, find with cyclic',
+      'payload = padding + chain, pack with p64 (little-endian)',
+      'VStack starts post-overflow; real exploit needs this step first'
+    ],
+    examples: [
+      {
+        title: 'Offset Discovery with Pwntools',
+        code: `from pwn import *
+# 1. Generate pattern, crash, read RIP
+# cyclic(100) -> send -> RIP = 0x6161616b
+# offset = cyclic_find(0x6161616b)  # e.g. 40
+offset = 40
+payload = b"A"*offset
+payload += p64(0x4005d3)  # POP RDI; RET
+payload += p64(0x601080)  # /bin/sh
+p.send(payload)`
+      }
+    ],
+    relatedConcepts: ['stack-memory', 'rop-basics']
+  },
+  {
+    id: 'mitigations-map',
+    title: 'Mitigations Map (NX/ASLR/PIE/Canary)',
+    category: 'security',
+    summary: 'Which mitigation blocks what, and what bypass to learn next',
+    content: `NX alone is bypassed by ROP. Modern binaries add more (check with checksec):
+- NX (DEP): stack RW- not R-X. Bypass: ROP with .text gadgets.
+- Canary: secret cookie before RIP, checked on return. Bypass: leak it, brute-force (fork), or avoid overwrite.
+- PIE: .text addresses randomized per run. Bypass: leak a .text pointer, compute base + offset.
+- ASLR: libc/stack randomized. Bypass: leak libc address (puts/write), compute system/bin_sh.
+- RELRO: GOT read-only after load. Full RELRO blocks GOT overwrite; use ret2libc instead.
+
+VStack addresses are fixed (like PIE off) for learning. Next level after VStack: practice leak + base calculation.`,
+    diagrams: [
+      `Mitigation -> Bypass:
+NX      -> ROP (.text gadgets)
+Canary  -> leak / brute-force
+PIE     -> leak .text ptr, base+offset
+ASLR    -> leak libc, compute system
+RELRO   -> no GOT overwrite, use ret2libc`
+    ],
+    keyPoints: [
+      'checksec first: NX, Canary, PIE, RELRO',
+      'Fixed 0x4005xx here = PIE off; real CTF needs leak+offset',
+      'ASLR/PIE need info leak, not just chain building'
+    ],
+    examples: [
+      {
+        title: 'Check + PIE Leak Math',
+        code: `# checksec --file=./vuln
+# PIE enabled -> gadget = leak - offset_known + offset_want
+# leak = puts@0x7f... (runtime)
+# base = leak - puts_offset_libc
+# system = base + system_offset
+# binsh = base + binsh_offset`
+      }
+    ],
+    relatedConcepts: ['nx-bit', 'rop-basics']
+  },
+  {
+    id: 'memory-writing',
+    title: 'Memory Writing & Bad Bytes',
+    category: 'rop-technique',
+    summary: 'Place /bin/sh yourself with MOV [reg],reg; handle 0x00 cuts',
+    content: `Real binaries may not contain "/bin/sh". Write it to writable .bss with a write gadget, then point RDI there.
+
+- Sections: .text R-X (gadgets), .bss RW- (write target, e.g. 0x601080).
+- Gadget: MOV [RDI], RSI; RET — writes 8 bytes from RSI to address in RDI.
+- Split "/bin/sh" into 8-byte chunks, write each, then execve.
+- Bad bytes: strcpy stops at 0x00, newlines (0x0a) cut input. Addresses like 0x4005xx contain 0x00 — use ROPgadget --badbytes "00" to filter, or find libc gadgets without them.
+
+VStack Level 4 introduces constrained gadget sets as a first step toward this.`,
+    diagrams: [
+      `Write-what-where:
+RDI = 0x601080 (.bss)   RSI = "/bin/sh\\0" (8 bytes)
+MOV [RDI], RSI; RET  ->  [0x601080] = "/bin/sh"
+
+Bad bytes (strcpy):
+input 0x40 0x05 0xd3 ... contains 0x00? cut here
+-> pick gadgets without 00 0a 0d`
+    ],
+    keyPoints: [
+      '.bss is writable target for string writes',
+      'MOV [RDI],RSI writes 8 bytes per gadget',
+      'Filter bad bytes with --badbytes; 0x00 cuts strcpy'
+    ],
+    examples: [
+      {
+        title: 'Find Write Gadget + Bad Bytes',
+        code: `# Find write gadget
+# ROPgadget --binary ./vuln | grep "mov \\[rdi\\]"
+# 0x... : mov qword ptr [rdi], rsi ; ret
+# Avoid null bytes
+# ROPgadget --binary ./vuln --badbytes "000a0d" | grep "pop rdi"`
+      }
+    ],
+    relatedConcepts: ['gadgets', 'execve']
+  },
+  {
+    id: 'reading-gadgets',
+    title: 'Reading Gadgets (ROPgadget/ropper)',
+    category: 'rop-technique',
+    summary: 'Multi-pop order, side effects, and tool workflow',
+    content: `Gadgets are found, not written. Tools: ROPgadget, ropper, pwntools ROP(elf).filter workflow (validated):
+
+- ROPgadget --binary ./vuln | grep "pop rdi" — most common (5f c3).
+- pop rsi 5e c3, pop rdx 5a c3 (rare — check libc), pop rax 58 c3, ret c3 (align), syscall 0f 05 c3.
+- Multi-pop order matters: POP RDI; POP RSI; RET consumes [gadget][val_rdi][val_rsi] in order. Swapping values swaps registers — top cause of "why is RDI wrong?".
+- Side effects: some gadgets do extra ops (e.g. pop rdi; or [rax],eax; ret clobbers memory). Prefer clean gadgets.
+- pwntools: rop = ROP(elf); rop.find_gadget(['pop rdi','ret']); rop.execve(binsh,0,0); rop.dump().
+
+VStack multi-pop 0x4005db/dd teaches this ordering explicitly.`,
+    diagrams: [
+      `Multi-pop layout:
+Stack: [0x4005db] [val_RDI] [val_RSI] [next...]
+Exec:  POP RDI=val_RDI, POP RSI=val_RSI, RET->next
+
+Bytes: pop rdi 5f c3 | pop rsi 5e c3 | pop rdx 5a c3
+       pop rax 58 c3 | ret c3 | syscall 0f 05 c3`
+    ],
+    keyPoints: [
+      'Order of values matches order of POPs',
+      'Prefer clean gadgets; check side effects',
+      'Use rop.dump() to verify layout before sending'
+    ],
+    examples: [
+      {
+        title: 'Gadget Hunt Workflow',
+        code: `# 1. Hunt
+# ROPgadget --binary ./vuln | grep "pop rdi"
+# ROPgadget --binary ./libc.so.6 | grep "pop rdx"
+# ROPgadget --binary ./vuln | grep ": ret$"
+# 2. Verify in pwntools
+from pwn import *
+elf = ELF('./vuln')
+rop = ROP(elf)
+print(hex(rop.find_gadget(['pop rdi','ret'])[0]))
+print(rop.dump())`
+      }
+    ],
+    relatedConcepts: ['gadgets', 'calling-convention']
   }
 ];
