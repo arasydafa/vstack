@@ -5,7 +5,7 @@
  * @module components/StatusExplanation
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StatusExplanation as StatusExplanationType } from '../types';
 import { ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, AlertCircle } from 'lucide-react';
 
@@ -43,6 +43,12 @@ const severityConfig = {
  */
 export const StatusExplanation = ({ explanation, onConceptClick }: StatusExplanationProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  // Auto-expand on error/success so What/Why/Fix is visible when needed most.
+  useEffect(() => {
+    if (explanation.severity === 'error' || explanation.severity === 'success') {
+      setIsExpanded(true);
+    }
+  }, [explanation]);
   const config = severityConfig[explanation.severity];
   const Icon = config.icon;
 

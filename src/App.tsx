@@ -12,8 +12,8 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, pointerWithin, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, pointerWithin, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from '@dnd-kit/core';
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { StackItem, Gadget } from './types';
 import { GadgetLibrary } from './components/GadgetLibrary';
 import { StackCanvas } from './components/StackCanvas';
@@ -22,9 +22,10 @@ import { TheorySidebar } from './components/TheorySidebar';
 import { ConceptModal } from './components/ConceptModal';
 import { LevelSelector } from './components/LevelSelector';
 import { LevelGoal } from './components/LevelGoal';
+import { Onboarding } from './components/Onboarding';
 import { useCpu } from './hooks/useCpu';
 import { LEVELS, getLevel, evalLevelChecks, isLevelComplete, loadProgress, saveLevelComplete } from './curriculum/levels';
-import { Shield, Terminal, BookOpen, Sun, Moon } from 'lucide-react';
+import { Shield, Terminal, BookOpen, Sun, Moon, HelpCircle } from 'lucide-react';
 import { Navbar, Button, ToasterProvider, toggleThemeReveal, useToast } from '@omega-os/ui';
 
 /** Auto-incrementing ID generator for unique stack item IDs. */
@@ -98,13 +99,22 @@ function AppInner() {
     [dark],
   );
 
-  // Configure sensors for better drag detection
+  // Configure sensors: pointer + touch + keyboard (a11y/mobile)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 5,
       },
-    })
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Onboarding state (omega-os Modal+Stepper inside Onboarding component)
+  const [onboardingOpen, setOnboardingOpen] = useState(
+    () => typeof localStorage !== 'undefined' && !localStorage.getItem('vstack-onboarded-v1'),
   );
 
   /**
@@ -254,6 +264,26 @@ function AppInner() {
     setStackItems(chain);
   }, [level, setStackItems]);
 
+  const handleAddGadget = useCallback((gadget: Gadget) => {
+    const newItem: StackItem = {
+      id: generateId(),
+      type: 'gadget',
+      value: gadget.address,
+      gadgetId: gadget.id,
+      label: gadget.instructions.join('; '),
+    };
+    insertItem(newItem, stackItems.length);
+  }, [insertItem, stackItems.length]);
+
+  const handleCloseOnboarding = useCallback(() => {
+    setOnboardingOpen(false);
+    try { localStorage.setItem('vstack-onboarded-v1', '1'); } catch { /* ignore */ }
+  }, []);
+
+  const handleReplayOnboarding = useCallback(() => {
+    setOnboardingOpen(true);
+  }, []);
+
   return (
     <div className="min-h-screen bg-ot-bg font-sans text-ot-text">
       <div
@@ -278,6 +308,9 @@ function AppInner() {
               <>
                 <Button variant="secondary" size="sm" icon={<BookOpen size={16} />} onClick={handleOpenTheory}>
                   Theory
+                </Button>
+                <Button variant="secondary" size="sm" icon={<HelpCircle size={16} />} onClick={handleReplayOnboarding}>
+                  Guide
                 </Button>
                 <button
                   type="button"
@@ -315,12 +348,12 @@ function AppInner() {
               onConceptClick={handleConceptClick}
             />
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-120px)]">
-            <div className="lg:col-span-3 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden">
-              <GadgetLibrary allowedGadgetIds={level.allowedGadgetIds} />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[calc(100vh-120px)]">
+            <div className="lg:col-span-3 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden min-h-[320px] lg:min-h-0">
+              <GadgetLibrary allowedGadgetIds={level.allowedGadgetIds} onAdd={handleAddGadget} onConceptClick={handleConceptClick} />
             </div>
 
-            <div className="lg:col-span-5 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden">
+            <div className="lg:col-span-5 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden min-h-[360px] lg:min-h-0">
               <StackCanvas
                 items={stackItems}
                 currentRsp={state.rsp}
@@ -330,7 +363,7 @@ function AppInner() {
               />
             </div>
 
-            <div className="lg:col-span-4 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden">
+            <div className="lg:col-span-4 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden min-h-[360px] lg:min-h-0">
               <CpuMonitor
                 state={state}
                 items={stackItems}
@@ -358,6 +391,8 @@ function AppInner() {
           )}
         </DragOverlay>
       </DndContext>
+
+      <Onboarding open={onboardingOpen} onClose={handleCloseOnboarding} />
 
       {/* Theory Sidebar */}
       <TheorySidebar
