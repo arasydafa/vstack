@@ -1,12 +1,12 @@
-import { useState, useEffect, memo, useCallback, useRef } from 'react';
+import { useState, useEffect, memo, useCallback, useRef, useMemo } from 'react';
 import { CpuState, StackItem } from '../types';
 import { RegisterDisplay } from './RegisterDisplay';
 import { StatusExplanation } from './StatusExplanation';
 import { ConceptTooltip } from './ConceptTooltip';
 import { exportToPwntools, copyToClipboard } from '../utils/exportPwntools';
 import { rspAddr } from '../utils/memory';
-import { Activity, Play, Pause, RotateCcw, Download, Check, Undo2 } from 'lucide-react';
-import { Badge, Button, Slider } from '@omega-os/ui';
+import { Activity, Play, Pause, RotateCcw, Download, Check, Undo2, Eye } from 'lucide-react';
+import { Badge, Button, Slider, Modal, CodeBlock, Input, Alert } from '@omega-os/ui';
 import type { BadgeTone } from '@omega-os/ui';
 
 /** Status tone mappings - defined outside component to avoid recreation. */
@@ -63,8 +63,12 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onUndo, canUndo
   const [copied, setCopied] = useState(false);
   const [running, setRunning] = useState(false);
   const [speed, setSpeed] = useState(4); // steps per second
+  const [offset, setOffset] = useState(40);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const runningRef = useRef(running);
   runningRef.current = running;
+
+  const exportCode = useMemo(() => exportToPwntools(items, offset), [items, offset]);
 
   const isTerminal = state.status === 'CRASHED' || state.status === 'SHELL_SPAWNED';
 
@@ -98,13 +102,12 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onUndo, canUndo
   }, [state.registers]);
 
   const handleExport = useCallback(async () => {
-    const code = exportToPwntools(items);
-    const success = await copyToClipboard(code);
+    const success = await copyToClipboard(exportCode);
     if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  }, [items]);
+  }, [exportCode]);
 
   return (
     <div className="h-full flex flex-col">
@@ -212,17 +215,57 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onUndo, canUndo
             </Button>
           </div>
 
-          <Button
-            onClick={handleExport}
-            disabled={items.length === 0}
-            variant="secondary"
-            icon={copied ? <Check size={16} aria-hidden /> : <Download size={16} aria-hidden />}
-            className="w-full"
-          >
-            {copied ? 'Copied!' : 'Export to Pwntools'}
-          </Button>
+          <Input
+            label="Exploit offset (padding to RIP)"
+            helper="Find with cyclic + pattern_offset. Default 40 = 32 buf + 8 RBP."
+            type="number"
+            min={0}
+            max={512}
+            value={offset}
+            onChange={(e) => setOffset(Math.max(0, Number(e.target.value) || 0))}
+          />
+
+          <Alert tone="info" title="Alignment note.">
+            Raw SYSCALL needs no 16-byte align. Extra RET matters for system()/call (MOVAPS). See stack-alignment concept.
+          </Alert>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setPreviewOpen(true)}
+              disabled={items.length === 0}
+              variant="solid"
+              icon={<Eye size={16} aria-hidden />}
+              className="flex-1"
+            >
+              Preview
+            </Button>
+            <Button
+              onClick={handleExport}
+              disabled={items.length === 0}
+              variant="secondary"
+              icon={copied ? <Check size={16} aria-hidden /> : <Download size={16} aria-hidden />}
+              className="flex-1"
+            >
+              {copied ? 'Copied!' : 'Export'}
+            </Button>
+          </div>
         </div>
       </div>
+
+      <Modal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={`Pwntools export (offset ${offset})`}
+        footer={
+          <Button size="sm" onClick={handleExport} icon={copied ? <Check size={14} aria-hidden /> : <Download size={14} aria-hidden />}>
+            {copied ? 'Copied!' : 'Copy code'}
+          </Button>
+        }
+      >
+        <div className="max-w-[560px]">
+          <CodeBlock code={exportCode} language="python" maxHeight={420} />
+        </div>
+      </Modal>
     </div>
   );
 });
