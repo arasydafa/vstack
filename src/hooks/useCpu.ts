@@ -16,12 +16,15 @@ const gadgetMap = getGadgetMap();
 interface CpuReducerState {
   cpu: CpuState;
   stackItems: StackItem[];
+  /** Bounded execution history for UNDO/BACK (Fase 2). */
+  history: CpuReducerState[];
 }
 
 /** Actions for the CPU reducer. */
 type CpuReducerAction =
   | { type: 'STEP' }
   | { type: 'RESET' }
+  | { type: 'UNDO' }
   | { type: 'SET_STACK_ITEMS'; payload: StackItem[] }
   | { type: 'SET_STACK_ITEMS_UPDATER'; payload: (prev: StackItem[]) => StackItem[] }
   | { type: 'INSERT_ITEM'; payload: { item: StackItem; index: number } }
@@ -30,6 +33,19 @@ type CpuReducerAction =
   | { type: 'CLEAR_STACK' }
   | { type: 'SET_STATUS'; payload: CpuState['status'] };
 
+const HISTORY_LIMIT = 100;
+
+const snapshot = (s: CpuReducerState): CpuReducerState => ({
+  cpu: { ...s.cpu, registers: { ...s.cpu.registers }, stack: [...s.cpu.stack], stackItems: [...s.cpu.stackItems] },
+  stackItems: [...s.stackItems],
+  history: [],
+});
+
+const pushHistory = (prev: CpuReducerState, next: Omit<CpuReducerState, 'history'>): CpuReducerState => ({
+  ...next,
+  history: [...prev.history, snapshot(prev)].slice(-HISTORY_LIMIT),
+});
+
 /**
  * Reducer that handles all CPU and stack state transitions.
  */
@@ -37,25 +53,37 @@ const cpuReducer = (state: CpuReducerState, action: CpuReducerAction): CpuReduce
   switch (action.type) {
     case 'STEP': {
       const newCpu = executeStep(state.cpu, gadgetMap);
-      return { ...state, cpu: newCpu };
+      // No state change (already terminal) → don't pollute history
+      if (newCpu === state.cpu) return state;
+      return pushHistory(state, { cpu: newCpu, stackItems: state.stackItems });
     }
 
     case 'RESET': {
       const newCpu = getInitialCpuState(state.cpu.stack, state.stackItems);
-      return { ...state, cpu: newCpu };
+      return { cpu: newCpu, stackItems: state.stackItems, history: [] };
+    }
+
+    case 'UNDO': {
+      if (state.history.length === 0) return state;
+      const prev = state.history[state.history.length - 1];
+      return {
+        cpu: prev.cpu,
+        stackItems: prev.stackItems,
+        history: state.history.slice(0, -1),
+      };
     }
 
     case 'SET_STACK_ITEMS': {
       const newStack = action.payload.map(item => item.value);
       const newCpu = getInitialCpuState(newStack, action.payload);
-      return { cpu: newCpu, stackItems: action.payload };
+      return { cpu: newCpu, stackItems: action.payload, history: [] };
     }
 
     case 'SET_STACK_ITEMS_UPDATER': {
       const newStackItems = action.payload(state.stackItems);
       const newStack = newStackItems.map(item => item.value);
       const newCpu = getInitialCpuState(newStack, newStackItems);
-      return { cpu: newCpu, stackItems: newStackItems };
+      return { cpu: newCpu, stackItems: newStackItems, history: [] };
     }
 
     case 'INSERT_ITEM': {
@@ -65,6 +93,7 @@ const cpuReducer = (state: CpuReducerState, action: CpuReducerAction): CpuReduce
       const newRsp = state.cpu.rsp >= action.payload.index ? state.cpu.rsp + 1 : state.cpu.rsp;
       return {
         stackItems: newStackItems,
+        history: [],
         cpu: {
           ...state.cpu,
           stack: newStack,
@@ -84,6 +113,7 @@ const cpuReducer = (state: CpuReducerState, action: CpuReducerAction): CpuReduce
           : state.cpu.rsp;
       return {
         stackItems: newStackItems,
+        history: [],
         cpu: {
           ...state.cpu,
           stack: newStack,
@@ -99,6 +129,7 @@ const cpuReducer = (state: CpuReducerState, action: CpuReducerAction): CpuReduce
       const newStack = newStackItems.map(item => item.value);
       return {
         stackItems: newStackItems,
+        history: [],
         cpu: {
           ...state.cpu,
           stack: newStack,
@@ -115,7 +146,7 @@ const cpuReducer = (state: CpuReducerState, action: CpuReducerAction): CpuReduce
 
     case 'CLEAR_STACK': {
       const newCpu = getInitialCpuState([]);
-      return { cpu: newCpu, stackItems: [] };
+      return { cpu: newCpu, stackItems: [], history: [] };
     }
 
     default:
@@ -140,11 +171,13 @@ export const useCpu = () => {
   const initialState: CpuReducerState = {
     cpu: getInitialCpuState([]),
     stackItems: [],
+    history: [],
   };
   const [reducerState, dispatch] = useReducer(cpuReducer, initialState);
 
   const step = useCallback(() => dispatch({ type: 'STEP' }), []);
   const reset = useCallback(() => dispatch({ type: 'RESET' }), []);
+  const undo = useCallback(() => dispatch({ type: 'UNDO' }), []);
   const setStackItems = useCallback((itemsOrUpdater: StackItem[] | ((prev: StackItem[]) => StackItem[])) => {
     if (typeof itemsOrUpdater === 'function') {
       // We need to get the current items to pass to the updater
@@ -165,8 +198,11 @@ export const useCpu = () => {
   return {
     state: reducerState.cpu,
     stackItems: reducerState.stackItems,
+    canUndo: reducerState.history.length > 0,
+    stepsTaken: reducerState.history.length,
     step,
     reset,
+    undo,
     setStackItems,
     insertItem,
     removeItem,

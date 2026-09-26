@@ -1,11 +1,12 @@
-import { useState, memo, useCallback } from 'react';
+import { useState, useEffect, memo, useCallback, useRef } from 'react';
 import { CpuState, StackItem } from '../types';
 import { RegisterDisplay } from './RegisterDisplay';
 import { StatusExplanation } from './StatusExplanation';
 import { ConceptTooltip } from './ConceptTooltip';
 import { exportToPwntools, copyToClipboard } from '../utils/exportPwntools';
-import { Activity, Play, RotateCcw, Download, Check } from 'lucide-react';
-import { Badge, Button } from '@omega-os/ui';
+import { rspAddr } from '../utils/memory';
+import { Activity, Play, Pause, RotateCcw, Download, Check, Undo2 } from 'lucide-react';
+import { Badge, Button, Slider } from '@omega-os/ui';
 import type { BadgeTone } from '@omega-os/ui';
 
 /** Status tone mappings - defined outside component to avoid recreation. */
@@ -34,6 +35,12 @@ interface CpuMonitorProps {
   onStep: () => void;
   /** Callback to reset CPU state. */
   onReset: () => void;
+  /** Callback to undo last step. */
+  onUndo: () => void;
+  /** Whether undo is available. */
+  canUndo: boolean;
+  /** Number of steps taken (history length). */
+  stepsTaken: number;
   /** Callback when a concept is clicked for details. */
   onConceptClick: (conceptId: string) => void;
 }
@@ -52,8 +59,30 @@ interface CpuMonitorProps {
  * @param props - CpuMonitorProps with state, items, and callbacks.
  * @returns A scrollable panel with register displays and control buttons.
  */
-export const CpuMonitor = memo(({ state, items, onStep, onReset, onConceptClick }: CpuMonitorProps) => {
+export const CpuMonitor = memo(({ state, items, onStep, onReset, onUndo, canUndo, stepsTaken, onConceptClick }: CpuMonitorProps) => {
   const [copied, setCopied] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [speed, setSpeed] = useState(4); // steps per second
+  const runningRef = useRef(running);
+  runningRef.current = running;
+
+  const isTerminal = state.status === 'CRASHED' || state.status === 'SHELL_SPAWNED';
+
+  useEffect(() => {
+    if (!running) return;
+    if (isTerminal) {
+      setRunning(false);
+      return;
+    }
+    const id = window.setInterval(() => {
+      if (runningRef.current) onStep();
+    }, Math.max(100, Math.round(1000 / speed)));
+    return () => window.clearInterval(id);
+  }, [running, speed, isTerminal, onStep]);
+
+  useEffect(() => {
+    if (isTerminal) setRunning(false);
+  }, [isTerminal]);
 
   const handleExport = useCallback(async () => {
     const code = exportToPwntools(items);
@@ -93,6 +122,8 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onConceptClick 
             </ConceptTooltip>
           </div>
           <div className="font-mono text-lg text-success">[{state.rsp}]</div>
+          <div className="font-mono text-xs text-ot-muted">{rspAddr(state.rsp)} · RSP += 8 per POP/RET</div>
+          <div className="mt-1 text-xs text-ot-muted" aria-live="polite">Steps taken: {stepsTaken}</div>
         </div>
 
         <div className="p-3 rounded-ot-md border border-ot-border bg-ot-surface">
@@ -124,23 +155,48 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onConceptClick 
         )}
 
         <div className="space-y-2">
-          <Button
-            onClick={onStep}
-            disabled={state.status === 'CRASHED' || state.status === 'SHELL_SPAWNED'}
-            icon={<Play size={16} aria-hidden />}
-            className="w-full"
-          >
-            Step
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={onStep}
+              disabled={isTerminal}
+              icon={<Play size={16} aria-hidden />}
+              className="flex-1"
+            >
+              Step
+            </Button>
+            <Button
+              onClick={() => setRunning((r) => !r)}
+              disabled={isTerminal && !running}
+              variant="solid"
+              icon={running ? <Pause size={16} aria-hidden /> : <Play size={16} aria-hidden />}
+              className="flex-1"
+              aria-pressed={running}
+            >
+              {running ? 'Pause' : 'Run'}
+            </Button>
+          </div>
 
-          <Button
-            onClick={onReset}
-            variant="solid"
-            icon={<RotateCcw size={16} aria-hidden />}
-            className="w-full"
-          >
-            Reset
-          </Button>
+          <Slider label="Run speed (steps/sec)" min={1} max={10} step={1} value={speed} onChange={setSpeed} />
+
+          <div className="flex gap-2">
+            <Button
+              onClick={onUndo}
+              disabled={!canUndo}
+              variant="secondary"
+              icon={<Undo2 size={16} aria-hidden />}
+              className="flex-1"
+            >
+              Back
+            </Button>
+            <Button
+              onClick={() => { setRunning(false); onReset(); }}
+              variant="solid"
+              icon={<RotateCcw size={16} aria-hidden />}
+              className="flex-1"
+            >
+              Reset
+            </Button>
+          </div>
 
           <Button
             onClick={handleExport}
