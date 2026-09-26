@@ -84,6 +84,19 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onUndo, canUndo
     if (isTerminal) setRunning(false);
   }, [isTerminal]);
 
+  // Register diff: compare with previous registers to flash changed ones.
+  const prevRegs = useRef(state.registers);
+  const changed = {
+    rax: prevRegs.current.rax !== state.registers.rax,
+    rdi: prevRegs.current.rdi !== state.registers.rdi,
+    rsi: prevRegs.current.rsi !== state.registers.rsi,
+    rdx: prevRegs.current.rdx !== state.registers.rdx,
+    rip: prevRegs.current.rip !== state.registers.rip,
+  };
+  useEffect(() => {
+    prevRegs.current = state.registers;
+  }, [state.registers]);
+
   const handleExport = useCallback(async () => {
     const code = exportToPwntools(items);
     const success = await copyToClipboard(code);
@@ -103,15 +116,16 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onUndo, canUndo
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <div className="space-y-2">
-          <RegisterDisplay name="rax" value={state.registers.rax} />
-          <RegisterDisplay name="rdi" value={state.registers.rdi} />
-          <RegisterDisplay name="rsi" value={state.registers.rsi} />
-          <RegisterDisplay name="rdx" value={state.registers.rdx} />
+        <div className="space-y-2" aria-live="polite" aria-label="Registers">
+          <RegisterDisplay name="rax" value={state.registers.rax} changed={changed.rax} />
+          <RegisterDisplay name="rdi" value={state.registers.rdi} changed={changed.rdi} />
+          <RegisterDisplay name="rsi" value={state.registers.rsi} changed={changed.rsi} />
+          <RegisterDisplay name="rdx" value={state.registers.rdx} changed={changed.rdx} />
           <RegisterDisplay
             name="rip"
             value={state.registers.rip}
             isActive={state.status === 'RUNNING'}
+            changed={changed.rip}
           />
         </div>
 

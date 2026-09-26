@@ -12,21 +12,25 @@ interface ConceptTooltipProps {
 const CONCEPTS_MAP = new Map(CONCEPTS.map(c => [c.id, c]));
 
 export const ConceptTooltip = memo(({ conceptId, children, onConceptClick }: ConceptTooltipProps) => {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const concept = useMemo(() => CONCEPTS_MAP.get(conceptId), [conceptId]);
 
-  const handleMouseEnter = useCallback(() => {
+  const open = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
-    setIsHovered(true);
+    setIsOpen(true);
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
+  const scheduleClose = useCallback(() => {
     timeoutRef.current = setTimeout(() => {
-      setIsHovered(false);
+      setIsOpen(false);
     }, 100);
+  }, []);
+
+  const toggle = useCallback(() => {
+    setIsOpen((v) => !v);
   }, []);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -37,18 +41,31 @@ export const ConceptTooltip = memo(({ conceptId, children, onConceptClick }: Con
   if (!concept) return <>{children}</>;
 
   return (
-    <div 
+    <div
       className="relative inline-block"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={open}
+      onMouseLeave={scheduleClose}
     >
-      {children}
-      
-      {isHovered && (
-        <div 
+      <span
+        tabIndex={0}
+        role="button"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+        aria-label={`Learn about ${concept.title}`}
+        onClick={toggle}
+        onFocus={open}
+        onBlur={scheduleClose}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
+        className="cursor-help border-b border-dashed border-ot-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-navy rounded-sm"
+      >
+        {children}
+      </span>
+
+      {isOpen && (
+        <div
           className="absolute z-[200] top-full left-0 mt-2 w-64 p-3 bg-ot-surface border border-ot-border rounded-ot-md shadow-ot-md"
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
+          onMouseEnter={open}
+          onMouseLeave={scheduleClose}
         >
           <div className="flex items-center gap-2 mb-2">
             <BookOpen size={16} aria-hidden className="text-navy-text" />
