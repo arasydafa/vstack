@@ -24,13 +24,11 @@ import { LevelSelector } from './components/LevelSelector';
 import { LevelGoal } from './components/LevelGoal';
 import { Onboarding } from './components/Onboarding';
 import { useCpu } from './hooks/useCpu';
+import { useTheoryNavigation } from './hooks/useTheoryNavigation';
+import { useAppTheme, generateStackId } from './hooks/useAppTheme';
 import { LEVELS, getLevel, evalLevelChecks, isLevelComplete, loadProgress, saveLevelComplete } from './curriculum/levels';
 import { Shield, Terminal, BookOpen, Sun, Moon, HelpCircle } from 'lucide-react';
-import { Navbar, Button, ToasterProvider, toggleThemeReveal, useToast } from '@omega-os/ui';
-
-/** Auto-incrementing ID generator for unique stack item IDs. */
-let nextId = 1;
-const generateId = () => `item-${nextId++}-${Math.random().toString(36).slice(2, 7)}`;
+import { Navbar, Button, ToasterProvider, useToast } from '@omega-os/ui';
 
 /**
  * Main application component.
@@ -50,6 +48,8 @@ function AppInner() {
   const { state, stackItems, step, reset, undo, canUndo, stepsTaken, setStackItems, insertItem, removeItem, clearStack } = useCpu();
   const [activeItem, setActiveItem] = useState<StackItem | Gadget | null>(null);
   const toast = useToast();
+  const { theoryOpen, selectedConcept, openTheory, closeTheory, openConcept, closeConcept } = useTheoryNavigation();
+  const { dark, toggleTheme: handleToggleTheme } = useAppTheme();
 
   // Curriculum level state
   const [levelId, setLevelId] = useState(() => localStorage.getItem('vstack-level-v1') ?? LEVELS[0].id);
@@ -74,31 +74,6 @@ function AppInner() {
     }
   }, [levelDone, level.id, progress, toast, level.short]);
 
-  // Theory state
-  const [theoryOpen, setTheoryOpen] = useState(false);
-  const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
-
-  // Theme state — VStack ships dark by default (see index.html).
-  const [dark, setDark] = useState(
-    () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
-  );
-
-  /**
-   * Toggles light/dark with a circular reveal from the clicked button.
-   */
-  const handleToggleTheme = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      const x = e.clientX || window.innerWidth - 60;
-      const y = e.clientY || 40;
-      toggleThemeReveal(x, y, () => {
-        const next = !dark;
-        setDark(next);
-        document.documentElement.classList.toggle('dark', next);
-      });
-    },
-    [dark],
-  );
-
   // Configure sensors: pointer + touch + keyboard (a11y/mobile)
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -122,8 +97,8 @@ function AppInner() {
    * Opens the ConceptModal with the selected concept.
    */
   const handleConceptClick = useCallback((conceptId: string) => {
-    setSelectedConcept(conceptId);
-  }, []);
+    openConcept(conceptId);
+  }, [openConcept]);
 
   /**
    * Handles drag start from GadgetLibrary.
@@ -157,7 +132,7 @@ function AppInner() {
     if (activeData?.type === 'gadget' && overId === 'stack-canvas') {
       const gadget = activeData.gadget as Gadget;
       const newItem: StackItem = {
-        id: generateId(),
+        id: generateStackId(),
         type: 'gadget',
         value: gadget.address,
         gadgetId: gadget.id,
@@ -186,7 +161,7 @@ function AppInner() {
    */
   const handleInsertValue = useCallback((value: string, label: string) => {
     const newItem: StackItem = {
-      id: generateId(),
+      id: generateStackId(),
       type: 'value',
       value,
       label,
@@ -204,10 +179,12 @@ function AppInner() {
 
   /**
    * Clears all items from the stack.
+   * Explicit reset: history cleared in reducer, toast confirms draft discarded.
    */
   const handleClearAll = useCallback(() => {
     clearStack();
-  }, [clearStack]);
+    toast.show('warning', 'Stack cleared — execution reset to IDLE');
+  }, [clearStack, toast]);
 
   /**
    * Handles stepping through CPU execution.
@@ -232,22 +209,22 @@ function AppInner() {
    * Closes the theory sidebar.
    */
   const handleCloseTheory = useCallback(() => {
-    setTheoryOpen(false);
-  }, []);
+    closeTheory();
+  }, [closeTheory]);
 
   /**
    * Closes the concept modal.
    */
   const handleCloseConcept = useCallback(() => {
-    setSelectedConcept(null);
-  }, []);
+    closeConcept();
+  }, [closeConcept]);
 
   /**
    * Opens the theory sidebar.
    */
   const handleOpenTheory = useCallback(() => {
-    setTheoryOpen(true);
-  }, []);
+    openTheory();
+  }, [openTheory]);
 
   const handleSelectLevel = useCallback((id: string) => {
     setLevelId(id);
@@ -255,18 +232,19 @@ function AppInner() {
 
   const handleLoadExample = useCallback(() => {
     const chain: StackItem[] = level.exampleChain.map((e) => ({
-      id: generateId(),
+      id: generateStackId(),
       type: e.type,
       value: e.value,
       gadgetId: e.gadgetId,
       label: e.label,
     }));
     setStackItems(chain);
-  }, [level, setStackItems]);
+    toast.show('info', `Example loaded for ${level.short} — execution reset`);
+  }, [level, setStackItems, toast]);
 
   const handleAddGadget = useCallback((gadget: Gadget) => {
     const newItem: StackItem = {
-      id: generateId(),
+      id: generateStackId(),
       type: 'gadget',
       value: gadget.address,
       gadgetId: gadget.id,

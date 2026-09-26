@@ -7,6 +7,11 @@
 /** Supported CPU register names in the x86-64 simulated environment. */
 export type Register = 'rax' | 'rdi' | 'rsi' | 'rdx' | 'rip';
 
+/** Hex address string (e.g., '0x4005d3'). Validated by isHexAddress. */
+export type HexAddress = string;
+
+export const isHexAddress = (v: string): v is HexAddress => /^0x[0-9a-fA-F]+$/.test(v);
+
 /**
  * Educational explanation displayed when the CPU encounters an error or succeeds.
  * Provides structured feedback for learning purposes.
@@ -107,14 +112,17 @@ export interface StackItem {
 }
 
 /**
- * Discriminated union of all possible CPU state transitions.
+ * Canonical CPU reducer actions (single source of truth).
  * Used with useReducer in the useCpu hook.
  */
 export type CpuAction =
   | { type: 'STEP' }
   | { type: 'RESET' }
-  | { type: 'SET_STACK'; payload: StackItem[] }
+  | { type: 'UNDO' }
+  | { type: 'SET_STACK_ITEMS'; payload: StackItem[] }
+  | { type: 'SET_STACK_ITEMS_UPDATER'; payload: (prev: StackItem[]) => StackItem[] }
   | { type: 'INSERT_ITEM'; payload: { item: StackItem; index: number } }
   | { type: 'REMOVE_ITEM'; payload: { index: number } }
   | { type: 'REORDER_STACK'; payload: { fromIndex: number; toIndex: number } }
+  | { type: 'CLEAR_STACK' }
   | { type: 'SET_STATUS'; payload: CpuState['status'] };

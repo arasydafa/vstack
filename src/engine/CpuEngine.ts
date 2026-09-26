@@ -5,8 +5,15 @@
  * @module engine/CpuEngine
  */
 
-import { CpuState, Register, StackItem } from '../types';
+import { CpuState, StackItem } from '../types';
+import { isHexAddress } from '../types';
 import { EXPLANATIONS } from '../data/explanations';
+import { parseInstruction } from './isa';
+import { checkExecve } from './syscalls';
+
+type ExplanationRegistry = typeof EXPLANATIONS;
+
+const isHexValid = (val: string): boolean => isHexAddress(val);
 
 /**
  * Creates the default initial CPU state with all registers zeroed.
@@ -29,16 +36,6 @@ const createInitialState = (): CpuState => ({
 });
 
 /**
- * Validates whether a string is a valid hexadecimal value (e.g., '0x4005d3').
- *
- * @param val - The string to validate.
- * @returns `true` if the string matches the pattern `0x[0-9a-fA-F]+`.
- */
-const isHexValid = (val: string): boolean => {
-  return /^0x[0-9a-fA-F]+$/.test(val);
-};
-
-/**
  * Executes a single CPU step based on the current state and gadget map.
  *
  * This is the core simulation function. It reads the current RIP, looks up
@@ -56,13 +53,17 @@ const isHexValid = (val: string): boolean => {
  * state = executeStep(state, gadgetMap); // Executes POP RDI
  * ```
  */
-export const executeStep = (state: CpuState, gadgetMap: Map<string, { instructions: string[] }>): CpuState => {
+export const executeStep = (
+  state: CpuState,
+  gadgetMap: Map<string, { instructions: string[] }>,
+  explanations: ExplanationRegistry = EXPLANATIONS,
+): CpuState => {
   if (state.status === 'CRASHED' || state.status === 'SHELL_SPAWNED') {
     return state;
   }
 
   if (state.rsp >= state.stack.length) {
-    return { ...state, status: 'CRASHED', currentInstruction: 'Stack underflow', explanation: EXPLANATIONS.STACK_UNDERFLOW };
+    return { ...state, status: 'CRASHED', currentInstruction: 'Stack underflow', explanation: explanations.STACK_UNDERFLOW };
   }
 
   const currentRip = state.registers.rip;
@@ -79,55 +80,48 @@ export const executeStep = (state: CpuState, gadgetMap: Map<string, { instructio
           currentInstruction: `Loading first gadget: ${firstValue}`,
         };
       }
-      return { ...state, status: 'CRASHED', currentInstruction: 'No valid starting address', explanation: EXPLANATIONS.NO_STARTING_ADDRESS };
+      return { ...state, status: 'CRASHED', currentInstruction: 'No valid starting address', explanation: explanations.NO_STARTING_ADDRESS };
     }
-    return { ...state, status: 'CRASHED', currentInstruction: 'Invalid RIP', explanation: EXPLANATIONS.INVALID_RIP };
+    return { ...state, status: 'CRASHED', currentInstruction: 'Invalid RIP', explanation: explanations.INVALID_RIP };
   }
 
   const gadget = gadgetMap.get(currentRip);
 
   if (!gadget) {
-    return { ...state, status: 'CRASHED', currentInstruction: `No gadget at ${currentRip}`, explanation: { ...EXPLANATIONS.NO_GADGET_AT_ADDRESS, whatHappened: EXPLANATIONS.NO_GADGET_AT_ADDRESS.whatHappened.replace('{address}', currentRip) } };
+    return { ...state, status: 'CRASHED', currentInstruction: `No gadget at ${currentRip}`, explanation: { ...explanations.NO_GADGET_AT_ADDRESS, whatHappened: explanations.NO_GADGET_AT_ADDRESS.whatHappened.replace('{address}', currentRip) } };
   }
 
-  const instruction = gadget.instructions[state.instructionPointer];
+  const raw = gadget.instructions[state.instructionPointer];
 
-  if (!instruction) {
-    return { ...state, status: 'CRASHED', currentInstruction: `No instruction at pointer ${state.instructionPointer}`, explanation: EXPLANATIONS.UNKNOWN_INSTRUCTION };
+  if (!raw) {
+    return { ...state, status: 'CRASHED', currentInstruction: `No instruction at pointer ${state.instructionPointer}`, explanation: explanations.UNKNOWN_INSTRUCTION };
   }
 
-  const upperInstr = instruction.toUpperCase();
+  const instr = parseInstruction(raw);
 
-  if (upperInstr.startsWith('POP ')) {
+  if (instr.op === 'POP') {
     // RIP cannot be POPed directly — only via RET. Educational guard.
-    if (/POP\s+RIP/.test(upperInstr)) {
-      return { ...state, status: 'CRASHED', currentInstruction: `Invalid POP target: ${instruction}`, explanation: EXPLANATIONS.POP_RIP_INVALID };
+    if (instr.reg === 'rip') {
+      return { ...state, status: 'CRASHED', currentInstruction: `Invalid POP target: ${raw}`, explanation: explanations.POP_RIP_INVALID };
     }
-
-    const regMatch = upperInstr.match(/POP\s+(RAX|RDI|RSI|RDX)/);
-    if (!regMatch) {
-      return { ...state, status: 'CRASHED', currentInstruction: `Invalid POP target: ${instruction}`, explanation: EXPLANATIONS.UNKNOWN_INSTRUCTION };
-    }
-
-    const reg = regMatch[1].toLowerCase() as Register;
 
     if (state.rsp >= state.stack.length) {
-      return { ...state, status: 'CRASHED', currentInstruction: 'Stack underflow on POP', explanation: EXPLANATIONS.STACK_UNDERFLOW_POP };
+      return { ...state, status: 'CRASHED', currentInstruction: 'Stack underflow on POP', explanation: explanations.STACK_UNDERFLOW_POP };
     }
 
     const value = state.stack[state.rsp];
     return {
       ...state,
-      registers: { ...state.registers, [reg]: value },
+      registers: { ...state.registers, [instr.reg]: value },
       rsp: state.rsp + 1,
       instructionPointer: state.instructionPointer + 1,
-      currentInstruction: `${instruction} => ${reg} = ${value}`,
+      currentInstruction: `${raw} => ${instr.reg} = ${value}`,
     };
   }
 
-  if (upperInstr === 'RET') {
+  if (instr.op === 'RET') {
     if (state.rsp >= state.stack.length) {
-      return { ...state, status: 'CRASHED', currentInstruction: 'Stack underflow on RET', explanation: EXPLANATIONS.STACK_UNDERFLOW_RET };
+      return { ...state, status: 'CRASHED', currentInstruction: 'Stack underflow on RET', explanation: explanations.STACK_UNDERFLOW_RET };
     }
 
     const returnAddr = state.stack[state.rsp];
@@ -140,62 +134,71 @@ export const executeStep = (state: CpuState, gadgetMap: Map<string, { instructio
     };
   }
 
-  if (upperInstr === 'SYSCALL') {
-    const rax = state.registers.rax;
-    const rdi = state.registers.rdi;
-    const rsi = state.registers.rsi;
-    const rdx = state.registers.rdx;
-    const isBinSh = rdi === '0x601080' || rdi === '0x7fff';
+  if (instr.op === 'SYSCALL') {
+    const result = checkExecve({
+      rax: state.registers.rax,
+      rdi: state.registers.rdi,
+      rsi: state.registers.rsi,
+      rdx: state.registers.rdx,
+    });
 
-    if (rax === '0x3b' && isBinSh && rsi === '0x0' && rdx === '0x0') {
+    if (result.ok) {
       return {
         ...state,
         status: 'SHELL_SPAWNED',
         currentInstruction: 'SYSCALL => execve("/bin/sh", NULL, NULL) - SHELL SPAWNED!',
-        explanation: EXPLANATIONS.SHELL_SPAWNED
+        explanation: explanations.SHELL_SPAWNED
       };
     }
 
-    if (rax !== '0x3b') {
+    if (result.reason === 'RAX') {
       return {
         ...state,
         status: 'CRASHED',
-        currentInstruction: `SYSCALL => Invalid syscall: RAX=${rax} (expected 0x3b execve)`,
-        explanation: EXPLANATIONS.INVALID_SYSCALL
+        currentInstruction: `SYSCALL => Invalid syscall: RAX=${state.registers.rax} (expected 0x3b execve)`,
+        explanation: explanations.INVALID_SYSCALL
       };
     }
 
-    if (!isBinSh) {
+    if (result.reason === 'RDI') {
       return {
         ...state,
         status: 'CRASHED',
-        currentInstruction: `SYSCALL => Invalid RDI=${rdi} (expected 0x601080 or 0x7fff)`,
-        explanation: EXPLANATIONS.INVALID_RDI
+        currentInstruction: `SYSCALL => Invalid RDI=${state.registers.rdi} (expected 0x601080 or 0x7fff)`,
+        explanation: explanations.INVALID_RDI
       };
     }
 
-    if (rsi !== '0x0') {
+    if (result.reason === 'RSI') {
       return {
         ...state,
         status: 'CRASHED',
-        currentInstruction: `SYSCALL => Invalid RSI=${rsi} (expected 0x0 NULL argv)`,
-        explanation: EXPLANATIONS.RSI_NOT_NULL
+        currentInstruction: `SYSCALL => Invalid RSI=${state.registers.rsi} (expected 0x0 NULL argv)`,
+        explanation: explanations.RSI_NOT_NULL
       };
     }
 
     return {
       ...state,
       status: 'CRASHED',
-      currentInstruction: `SYSCALL => Invalid RDX=${rdx} (expected 0x0 NULL envp)`,
-      explanation: EXPLANATIONS.RDX_NOT_NULL
+      currentInstruction: `SYSCALL => Invalid RDX=${state.registers.rdx} (expected 0x0 NULL envp)`,
+      explanation: explanations.RDX_NOT_NULL
+    };
+  }
+
+  if (instr.op === 'NOP') {
+    return {
+      ...state,
+      instructionPointer: state.instructionPointer + 1,
+      currentInstruction: 'NOP => (no operation)',
     };
   }
 
   return {
     ...state,
     status: 'CRASHED',
-    currentInstruction: `Unknown instruction: ${instruction}`,
-    explanation: EXPLANATIONS.UNKNOWN_INSTRUCTION
+    currentInstruction: `Unknown instruction: ${raw}`,
+    explanation: explanations.UNKNOWN_INSTRUCTION
   };
 };
 
