@@ -11,7 +11,7 @@
  * @module App
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, pointerWithin, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { StackItem, Gadget } from './types';
@@ -20,13 +20,16 @@ import { StackCanvas } from './components/StackCanvas';
 import { CpuMonitor } from './components/CpuMonitor';
 import { TheorySidebar } from './components/TheorySidebar';
 import { ConceptModal } from './components/ConceptModal';
+import { LevelSelector } from './components/LevelSelector';
+import { LevelGoal } from './components/LevelGoal';
 import { useCpu } from './hooks/useCpu';
+import { LEVELS, getLevel, evalLevelChecks, isLevelComplete, loadProgress, saveLevelComplete } from './curriculum/levels';
 import { Shield, Terminal, BookOpen, Sun, Moon } from 'lucide-react';
-import { Navbar, Button, ToasterProvider, toggleThemeReveal } from '@omega-os/ui';
+import { Navbar, Button, ToasterProvider, toggleThemeReveal, useToast } from '@omega-os/ui';
 
 /** Auto-incrementing ID generator for unique stack item IDs. */
 let nextId = 1;
-const generateId = () => `item-${nextId++}`;
+const generateId = () => `item-${nextId++}-${Math.random().toString(36).slice(2, 7)}`;
 
 /**
  * Main application component.
@@ -42,9 +45,33 @@ const generateId = () => `item-${nextId++}`;
  * - `activeItem` for drag overlay display
  * - `theoryOpen` and `selectedConcept` for theory navigation
  */
-function App() {
+function AppInner() {
   const { state, stackItems, step, reset, undo, canUndo, stepsTaken, setStackItems, insertItem, removeItem, clearStack } = useCpu();
   const [activeItem, setActiveItem] = useState<StackItem | Gadget | null>(null);
+  const toast = useToast();
+
+  // Curriculum level state
+  const [levelId, setLevelId] = useState(() => localStorage.getItem('vstack-level-v1') ?? LEVELS[0].id);
+  const [progress, setProgress] = useState<Record<string, boolean>>(() => loadProgress());
+  const level = useMemo(() => getLevel(levelId), [levelId]);
+  const checks = useMemo(
+    () => evalLevelChecks(level, { status: state.status, registers: state.registers, items: stackItems }),
+    [level, state.status, state.registers, stackItems],
+  );
+  const levelDone = isLevelComplete(checks);
+  const overallDone = LEVELS.filter((l) => progress[l.id]).length;
+
+  useEffect(() => {
+    localStorage.setItem('vstack-level-v1', levelId);
+  }, [levelId]);
+
+  useEffect(() => {
+    if (levelDone && !progress[level.id]) {
+      saveLevelComplete(level.id);
+      setProgress((p) => ({ ...p, [level.id]: true }));
+      toast.show('success', `Level complete: ${level.short}`);
+    }
+  }, [levelDone, level.id, progress, toast, level.short]);
 
   // Theory state
   const [theoryOpen, setTheoryOpen] = useState(false);
@@ -212,8 +239,22 @@ function App() {
     setTheoryOpen(true);
   }, []);
 
+  const handleSelectLevel = useCallback((id: string) => {
+    setLevelId(id);
+  }, []);
+
+  const handleLoadExample = useCallback(() => {
+    const chain: StackItem[] = level.exampleChain.map((e) => ({
+      id: generateId(),
+      type: e.type,
+      value: e.value,
+      gadgetId: e.gadgetId,
+      label: e.label,
+    }));
+    setStackItems(chain);
+  }, [level, setStackItems]);
+
   return (
-    <ToasterProvider>
     <div className="min-h-screen bg-ot-bg font-sans text-ot-text">
       <div
         className="sticky top-0 z-50 border-b border-ot-border backdrop-blur-sm"
@@ -262,10 +303,21 @@ function App() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <main className="max-w-7xl mx-auto px-4 py-6">
+        <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+          <div className="bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden">
+            <LevelSelector currentId={level.id} completed={progress} onSelect={handleSelectLevel} />
+            <LevelGoal
+              level={level}
+              checks={checks}
+              overallDone={overallDone}
+              overallTotal={LEVELS.length}
+              onLoadExample={handleLoadExample}
+              onConceptClick={handleConceptClick}
+            />
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-120px)]">
             <div className="lg:col-span-3 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden">
-              <GadgetLibrary />
+              <GadgetLibrary allowedGadgetIds={level.allowedGadgetIds} />
             </div>
 
             <div className="lg:col-span-5 bg-ot-surface rounded-ot-lg border border-ot-border overflow-hidden">
@@ -323,6 +375,13 @@ function App() {
         />
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ToasterProvider>
+      <AppInner />
     </ToasterProvider>
   );
 }
