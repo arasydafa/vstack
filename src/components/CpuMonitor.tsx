@@ -63,10 +63,21 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onUndo, canUndo
   const [copied, setCopied] = useState(false);
   const [running, setRunning] = useState(false);
   const [speed, setSpeed] = useState(4); // steps per second
-  const [offset, setOffset] = useState(40);
+  // offsetText as string so user can clear/type freely (fixes 40 -> 072 bug).
+  const [offsetText, setOffsetText] = useState('40');
   const [previewOpen, setPreviewOpen] = useState(false);
   const runningRef = useRef(running);
   runningRef.current = running;
+
+  const offset = useMemo(() => {
+    const n = parseInt(offsetText, 10);
+    if (Number.isNaN(n)) return 0;
+    return Math.min(512, Math.max(0, n));
+  }, [offsetText]);
+
+  const offsetError = offsetText !== '' && (Number.isNaN(parseInt(offsetText, 10)) || offset > 512)
+    ? 'Offset 0–512'
+    : undefined;
 
   const exportCode = useMemo(() => exportToPwntools(items, offset), [items, offset]);
 
@@ -218,11 +229,13 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onUndo, canUndo
           <Input
             label="Exploit offset (padding to RIP)"
             helper="Find with cyclic + pattern_offset. Default 40 = 32 buf + 8 RBP."
-            type="number"
-            min={0}
-            max={512}
-            value={offset}
-            onChange={(e) => setOffset(Math.max(0, Number(e.target.value) || 0))}
+            error={offsetError}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="40"
+            value={offsetText}
+            onChange={(e) => setOffsetText(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
           />
 
           <Alert tone="info" title="Alignment note.">
