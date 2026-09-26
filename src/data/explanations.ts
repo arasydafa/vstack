@@ -62,7 +62,7 @@ export const EXPLANATIONS: Record<string, StatusExplanation> = {
     whatHappened: 'The RIP register points to an address, but no gadget exists at that location in the gadget library.',
     whyItMatters: 'The gadget library contains pre-defined instruction sequences. If RIP points to an address not in the library, the CPU has no instructions to execute.',
     howToFix: [
-      'Use a gadget address from the library (0x4005d3 - 0x4005dd)',
+      'Use a gadget address from the library (e.g., 0x4005d3, 0x4005e1, 0x4005c0)',
       'Verify you typed the address correctly (check for typos)',
       'Use RET gadget to chain to the next address on the stack'
     ],
@@ -95,17 +95,63 @@ export const EXPLANATIONS: Record<string, StatusExplanation> = {
   },
   INVALID_SYSCALL: {
     title: 'Invalid Syscall Arguments',
-    whatHappened: 'SYSCALL executed but the registers were not set correctly. Expected RAX=0x3b (execve) and RDI=0x7fff (/bin/sh pointer).',
-    whyItMatters: 'The execve syscall requires specific register values: RAX must be 0x3b (syscall number for execve), and RDI must point to the "/bin/sh" string.',
+    whatHappened: 'SYSCALL executed but RAX is not 0x3b (execve). Current registers do not select the execve syscall.',
+    whyItMatters: 'x86-64 Linux selects the syscall via RAX. execve is 59 (0x3b). RDI/RSI/RDX are arguments, not the selector. See: man syscall(2), syscall_64.tbl.',
     howToFix: [
       'Add POP RAX; RET gadget before SYSCALL',
       'Add 0x3b (execve syscall number) after POP RAX',
-      'Add POP RDI; RET gadget before SYSCALL',
-      'Add 0x7fff (/bin/sh address) after POP RDI',
-      'Order should be: POP RAX → 0x3b → POP RDI → 0x7fff → SYSCALL'
+      'Order should be: POP RAX → 0x3b → ... → SYSCALL'
     ],
     severity: 'error',
     relatedConcepts: ['execve', 'calling-convention']
+  },
+  INVALID_RDI: {
+    title: 'Invalid RDI for execve',
+    whatHappened: 'SYSCALL selected execve (RAX=0x3b) but RDI does not point to "/bin/sh". Expected 0x601080 (.bss) or 0x7fff (legacy simplified).',
+    whyItMatters: 'execve arg0 (RDI) must be a pointer to the program path. A garbage immediate is not a valid string pointer. In real exploits this comes from ELF/.bss or libc search.',
+    howToFix: [
+      'Add POP RDI; RET gadget before SYSCALL',
+      'Add 0x601080 (.bss /bin/sh, recommended) after POP RDI',
+      'Legacy 0x7fff still accepted for simplified level'
+    ],
+    severity: 'error',
+    relatedConcepts: ['execve', 'calling-convention']
+  },
+  RSI_NOT_NULL: {
+    title: 'RSI Must Be NULL',
+    whatHappened: 'SYSCALL selected execve but RSI is not 0x0. execve arg1 (argv) must be NULL for execve("/bin/sh", NULL, NULL).',
+    whyItMatters: 'Kernel validates argv/envp pointers. Garbage in RSI causes EFAULT and no shell, even if RAX/RDI are correct. Zero unused args.',
+    howToFix: [
+      'Add POP RSI; RET gadget before SYSCALL',
+      'Add 0x0 (NULL) after POP RSI',
+      'Registers default to 0x0 — do not overwrite RSI with garbage'
+    ],
+    severity: 'error',
+    relatedConcepts: ['execve', 'calling-convention']
+  },
+  RDX_NOT_NULL: {
+    title: 'RDX Must Be NULL',
+    whatHappened: 'SYSCALL selected execve but RDX is not 0x0. execve arg2 (envp) must be NULL for execve("/bin/sh", NULL, NULL).',
+    whyItMatters: 'Same as RSI: kernel checks envp. RDX garbage fails the syscall. x86-64 syscall args are RDI,RSI,RDX,R10,R8,R9.',
+    howToFix: [
+      'Add POP RDX; RET gadget (0x4005e1) before SYSCALL',
+      'Add 0x0 (NULL) after POP RDX',
+      'Registers default to 0x0 — do not overwrite RDX with garbage'
+    ],
+    severity: 'error',
+    relatedConcepts: ['execve', 'calling-convention']
+  },
+  POP_RIP_INVALID: {
+    title: 'Cannot POP into RIP',
+    whatHappened: 'Encountered POP RIP. RIP cannot be loaded with POP — control flow changes only via RET (which pops into RIP internally).',
+    whyItMatters: 'x86-64 has no POP RIP encoding. ROP hijacks RIP via overwritten return address + RET. Teaching POP RIP creates a wrong mental model.',
+    howToFix: [
+      'Use RET gadget to load next address into RIP',
+      'To set RIP, place target address after a RET-ending gadget',
+      'Remove any POP RIP gadget from your chain'
+    ],
+    severity: 'error',
+    relatedConcepts: ['rop-basics', 'gadgets']
   },
   UNKNOWN_INSTRUCTION: {
     title: 'Unknown Instruction',
@@ -121,8 +167,8 @@ export const EXPLANATIONS: Record<string, StatusExplanation> = {
   },
   SHELL_SPAWNED: {
     title: 'Shell Successfully Spawned!',
-    whatHappened: 'execve("/bin/sh", NULL, NULL) executed successfully. The SYSCALL instruction triggered the kernel to spawn a shell.',
-    whyItMatters: 'You\'ve successfully bypassed NX protection using ROP! The chain correctly set RAX=0x3b (execve) and RDI pointing to "/bin/sh", then triggered the syscall.',
+    whatHappened: 'execve("/bin/sh", NULL, NULL) executed successfully. RAX=0x3b, RDI points to "/bin/sh", RSI=0x0, RDX=0x0.',
+    whyItMatters: 'You\'ve successfully bypassed NX protection using ROP! The chain correctly set all execve args per x86-64 syscall convention (RDI,RSI,RDX), then triggered SYSCALL.',
     howToFix: [
       'Congratulations! Your ROP chain worked correctly.',
       'In a real exploit, you would now have interactive shell access.',

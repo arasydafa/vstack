@@ -20,25 +20,43 @@ export const GADGETS: Gadget[] = [
     id: 'gadget-pop-rdi-ret',
     address: '0x4005d3',
     instructions: ['POP RDI', 'RET'],
-    description: 'Pop value into RDI register',
+    description: 'Pop value into RDI register (execve arg0)',
   },
   {
     id: 'gadget-pop-rsi-ret',
     address: '0x4005d9',
     instructions: ['POP RSI', 'RET'],
-    description: 'Pop value into RSI register',
+    description: 'Pop value into RSI register (execve argv, must be NULL)',
+  },
+  {
+    id: 'gadget-pop-rdx-ret',
+    address: '0x4005e1',
+    instructions: ['POP RDX', 'RET'],
+    description: 'Pop value into RDX register (execve envp, must be NULL)',
   },
   {
     id: 'gadget-pop-rax-ret',
     address: '0x4005e5',
     instructions: ['POP RAX', 'RET'],
-    description: 'Pop value into RAX register',
+    description: 'Pop value into RAX register (syscall number)',
+  },
+  {
+    id: 'gadget-ret',
+    address: '0x4005c0',
+    instructions: ['RET'],
+    description: 'Bare RET for stack alignment (shifts RSP by 8)',
+  },
+  {
+    id: 'gadget-nop-ret',
+    address: '0x4005a0',
+    instructions: ['NOP', 'RET'],
+    description: 'No operation, padding + chain to next gadget',
   },
   {
     id: 'gadget-syscall',
     address: '0x4005e9',
     instructions: ['SYSCALL', 'RET'],
-    description: 'Execute system call',
+    description: 'Execute system call (x86-64: RAX=num, RDI,RSI,RDX,R10,R8,R9=args)',
   },
   {
     id: 'gadget-pop-rdi-rsi-ret',
@@ -59,7 +77,8 @@ export const GADGETS: Gadget[] = [
  * These represent common values used in ROP chains.
  */
 export const VALUES: { value: string; label: string }[] = [
-  { value: '0x7fff', label: '/bin/sh' },
+  { value: '0x601080', label: '/bin/sh (.bss)' },
+  { value: '0x7fff', label: '/bin/sh (legacy)' },
   { value: '0x3b', label: 'execve (59)' },
   { value: '0x0', label: 'NULL' },
   { value: '0x1', label: '1' },

@@ -18,6 +18,7 @@ const createInitialState = (): CpuState => ({
     rax: '0x0',
     rdi: '0x0',
     rsi: '0x0',
+    rdx: '0x0',
     rip: '0x0',
   },
   stack: [],
@@ -98,7 +99,12 @@ export const executeStep = (state: CpuState, gadgetMap: Map<string, { instructio
   const upperInstr = instruction.toUpperCase();
 
   if (upperInstr.startsWith('POP ')) {
-    const regMatch = upperInstr.match(/POP\s+(RAX|RDI|RSI|RIP)/);
+    // RIP cannot be POPed directly — only via RET. Educational guard.
+    if (/POP\s+RIP/.test(upperInstr)) {
+      return { ...state, status: 'CRASHED', currentInstruction: `Invalid POP target: ${instruction}`, explanation: EXPLANATIONS.POP_RIP_INVALID };
+    }
+
+    const regMatch = upperInstr.match(/POP\s+(RAX|RDI|RSI|RDX)/);
     if (!regMatch) {
       return { ...state, status: 'CRASHED', currentInstruction: `Invalid POP target: ${instruction}`, explanation: EXPLANATIONS.UNKNOWN_INSTRUCTION };
     }
@@ -137,21 +143,51 @@ export const executeStep = (state: CpuState, gadgetMap: Map<string, { instructio
   if (upperInstr === 'SYSCALL') {
     const rax = state.registers.rax;
     const rdi = state.registers.rdi;
+    const rsi = state.registers.rsi;
+    const rdx = state.registers.rdx;
+    const isBinSh = rdi === '0x601080' || rdi === '0x7fff';
 
-    if (rax === '0x3b' && rdi === '0x7fff') {
+    if (rax === '0x3b' && isBinSh && rsi === '0x0' && rdx === '0x0') {
       return {
         ...state,
         status: 'SHELL_SPAWNED',
-        currentInstruction: 'SYSCALL => execve("/bin/sh") - SHELL SPAWNED!',
+        currentInstruction: 'SYSCALL => execve("/bin/sh", NULL, NULL) - SHELL SPAWNED!',
         explanation: EXPLANATIONS.SHELL_SPAWNED
+      };
+    }
+
+    if (rax !== '0x3b') {
+      return {
+        ...state,
+        status: 'CRASHED',
+        currentInstruction: `SYSCALL => Invalid syscall: RAX=${rax} (expected 0x3b execve)`,
+        explanation: EXPLANATIONS.INVALID_SYSCALL
+      };
+    }
+
+    if (!isBinSh) {
+      return {
+        ...state,
+        status: 'CRASHED',
+        currentInstruction: `SYSCALL => Invalid RDI=${rdi} (expected 0x601080 or 0x7fff)`,
+        explanation: EXPLANATIONS.INVALID_RDI
+      };
+    }
+
+    if (rsi !== '0x0') {
+      return {
+        ...state,
+        status: 'CRASHED',
+        currentInstruction: `SYSCALL => Invalid RSI=${rsi} (expected 0x0 NULL argv)`,
+        explanation: EXPLANATIONS.RSI_NOT_NULL
       };
     }
 
     return {
       ...state,
       status: 'CRASHED',
-      currentInstruction: `SYSCALL => Invalid syscall: RAX=${rax}, RDI=${rdi}`,
-      explanation: EXPLANATIONS.INVALID_SYSCALL
+      currentInstruction: `SYSCALL => Invalid RDX=${rdx} (expected 0x0 NULL envp)`,
+      explanation: EXPLANATIONS.RDX_NOT_NULL
     };
   }
 

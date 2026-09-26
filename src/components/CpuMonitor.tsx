@@ -78,6 +78,7 @@ export const CpuMonitor = memo(({ state, items, onStep, onReset, onConceptClick 
           <RegisterDisplay name="rax" value={state.registers.rax} />
           <RegisterDisplay name="rdi" value={state.registers.rdi} />
           <RegisterDisplay name="rsi" value={state.registers.rsi} />
+          <RegisterDisplay name="rdx" value={state.registers.rdx} />
           <RegisterDisplay
             name="rip"
             value={state.registers.rip}
