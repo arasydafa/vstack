@@ -5,7 +5,9 @@ import { StackItem } from '../types';
 import { VALUES } from '../data/gadgets';
 import { StackRow } from './StackRow';
 import { Layers, Plus, Trash2 } from 'lucide-react';
-import { Button, EmptyState } from '@omega-os/ui';
+import { Button, EmptyState, Badge } from '@omega-os/ui';
+import { addrForIndex, asciiPreview, rspAddr } from '../utils/memory';
+import { validateChain } from '../utils/validateChain';
 
 /** Props for the StackCanvas component. */
 interface StackCanvasProps {
@@ -39,6 +41,8 @@ export const StackCanvas = ({ items, currentRsp, onRemoveItem, onInsertValue, on
   });
 
   const itemIds = useMemo(() => items.map(item => item.id), [items]);
+  const issues = useMemo(() => validateChain(items), [items]);
+  const issueByIndex = useMemo(() => new Map(issues.map((i) => [i.index, i.message])), [issues]);
 
   return (
     <div className="h-full flex flex-col">
@@ -50,7 +54,10 @@ export const StackCanvas = ({ items, currentRsp, onRemoveItem, onInsertValue, on
           </h2>
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-ot-muted">RSP:</span>
-            <span className="text-xs font-mono text-success">[{currentRsp}]</span>
+            <span className="text-xs font-mono text-success">[{currentRsp}] {rspAddr(currentRsp)}</span>
+            {issues.length > 0 && (
+              <Badge tone="danger">{issues.length} layout issue{issues.length > 1 ? 's' : ''}</Badge>
+            )}
             {items.length > 0 && (
               <Button
                 variant="danger"
@@ -98,7 +105,11 @@ export const StackCanvas = ({ items, currentRsp, onRemoveItem, onInsertValue, on
                 key={item.id}
                 item={item}
                 index={index}
+                address={addrForIndex(index)}
+                ascii={asciiPreview(item.value, item.label)}
                 isCurrentRsp={index === currentRsp}
+                isExecuted={index < currentRsp}
+                validationError={issueByIndex.get(index)}
                 onRemove={onRemoveItem}
               />
             ))}

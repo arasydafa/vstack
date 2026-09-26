@@ -43,7 +43,7 @@ const generateId = () => `item-${nextId++}`;
  * - `theoryOpen` and `selectedConcept` for theory navigation
  */
 function App() {
-  const { state, stackItems, step, reset, setStackItems, insertItem, removeItem, clearStack } = useCpu();
+  const { state, stackItems, step, reset, undo, canUndo, stepsTaken, setStackItems, insertItem, removeItem, clearStack } = useCpu();
   const [activeItem, setActiveItem] = useState<StackItem | Gadget | null>(null);
 
   // Theory state
@@ -187,6 +187,10 @@ function App() {
     reset();
   }, [reset]);
 
+  const handleUndo = useCallback(() => {
+    undo();
+  }, [undo]);
+
   /**
    * Closes the theory sidebar.
    */
@@ -280,6 +284,9 @@ function App() {
                 items={stackItems}
                 onStep={handleStep}
                 onReset={handleReset}
+                onUndo={handleUndo}
+                canUndo={canUndo}
+                stepsTaken={stepsTaken}
                 onConceptClick={handleConceptClick}
               />
             </div>
