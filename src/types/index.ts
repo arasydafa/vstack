@@ -5,7 +5,7 @@
  */
 
 /** Supported CPU register names in the x86-64 simulated environment. */
-export type Register = 'rax' | 'rdi' | 'rsi' | 'rip';
+export type Register = 'rax' | 'rdi' | 'rsi' | 'rdx' | 'rip';
 
 /**
  * Educational explanation displayed when the CPU encounters an error or succeeds.

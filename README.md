@@ -120,24 +120,31 @@ The simulator supports three x86-64 instructions:
 
 | Instruction | Behavior |
 |-------------|----------|
-| `POP reg` | Pop top of stack into register (`RAX`, `RDI`, `RSI`, `RIP`) |
+| `POP reg` | Pop top of stack into register (`RAX`, `RDI`, `RSI`, `RDX`) |
 | `RET` | Pop top of stack into `RIP` (control flow hijack) |
-| `SYSCALL` | Execute syscall with current register values |
+| `SYSCALL` | Execute syscall with current register values (x86-64: `RAX=num`, `RDI,RSI,RDX,R10,R8,R9=args`) |
+
+`POP RIP` is rejected by design — use `RET` to change `RIP`.
 
 ### Success Condition
 
-Shell is spawned when:
-- `RAX = 0x3b` (execve syscall number)
-- `RDI = 0x7fff` (pointer to `"/bin/sh"`)
+Shell is spawned when `execve("/bin/sh", NULL, NULL)`:
+- `RAX = 0x3b` (execve syscall number, see `syscall_64.tbl`)
+- `RDI = 0x601080` (`.bss` pointer) or `0x7fff` (legacy simplified)
+- `RSI = 0x0` (NULL argv)
+- `RDX = 0x0` (NULL envp)
 
 ## Available Gadgets
 
 | Address | Instructions | Description |
 |---------|--------------|-------------|
-| `0x4005d3` | `POP RDI`; `RET` | Load value into `RDI` |
-| `0x4005d9` | `POP RSI`; `RET` | Load value into `RSI` |
-| `0x4005e5` | `POP RAX`; `RET` | Load value into `RAX` |
-| `0x4005e1` | `POP RDX`; `RET` | Load value into `RDX` |
+| `0x4005d3` | `POP RDI`; `RET` | Load value into `RDI` (arg0) |
+| `0x4005d9` | `POP RSI`; `RET` | Load value into `RSI` (arg1, must be NULL) |
+| `0x4005e5` | `POP RAX`; `RET` | Load value into `RAX` (syscall number) |
+| `0x4005e1` | `POP RDX`; `RET` | Load value into `RDX` (arg2, must be NULL) |
+| `0x4005db` | `POP RDI`; `POP RSI`; `RET` | Multi-pop `RDI,RSI` |
+| `0x4005dd` | `POP RAX`; `POP RDI`; `RET` | Multi-pop `RAX,RDI` |
+| `0x4005c0` | `RET` | Bare `RET` for stack alignment |
 | `0x4005e9` | `SYSCALL`; `RET` | Execute `syscall` |
 | `0x4005a0` | `NOP`; `RET` | No operation (padding) |
 
